@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Smart Delivery{% endblock %}</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #475569;
+            --primary: #2563eb;
+            --primary-soft: #dbeafe;
+            --line: #e2e8f0;
+            --shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: Inter, Segoe UI, Arial, sans-serif;
+            margin: 0;
+            background: radial-gradient(circle at top right, #dbeafe, #f8fafc 40%);
+            color: var(--text);
+        }
+        .topbar {
+            background: #0f172a;
+            color: #fff;
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 10px; }
+        .logo {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #3b82f6, #22c55e);
+        }
+        .container { max-width: 1100px; margin: 26px auto; padding: 0 16px 36px; }
+        .hero {
+            background: linear-gradient(120deg, #0f172a, #1d4ed8);
+            color: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 18px;
+            box-shadow: var(--shadow);
+        }
+        .hero h1 { margin: 0 0 8px; font-size: 27px; }
+        .hero p { margin: 0; color: #cbd5e1; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 14px;
+        }
+        .card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 18px;
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+        }
+        .card h3 { margin: 0 0 6px; font-size: 18px; }
+        .card p { margin: 0 0 12px; color: var(--muted); }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: var(--primary-soft);
+            color: #1d4ed8;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .pill {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #f1f5f9;
+            font-size: 12px;
+            color: #334155;
+            margin-right: 6px;
+            margin-bottom: 8px;
+        }
+        code {
+            background: #f1f5f9;
+            color: #0f172a;
+            padding: 3px 7px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        .actions { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
+        .btn {
+            text-decoration: none;
+            background: var(--primary);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .btn.alt { background: #0f172a; }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="logo"></div>
+            <strong>Smart Delivery Platform</strong>
+        </div>
+        <div>
+            Utilisateur: <strong>{{ request.user.username }}</strong>
+            (<span class="badge">{{ user_role }}</span>)
+        </div>
+    </div>
+    <div class="container">
+        <section class="hero">
+            <h1>{% block page_title %}Tableau de bord{% endblock %}</h1>
+            <p>{% block page_subtitle %}Plateforme moderne de gestion livraison, commandes et operations.{% endblock %}</p>
+        </section>
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

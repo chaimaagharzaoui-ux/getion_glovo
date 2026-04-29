@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion | Smart Delivery</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6C63FF;
+            --primary-light: #EEF2FF;
+            --accent: #FF6584;
+            --surface: #FFFFFF;
+            --background: #F8F7FF;
+            --text-primary: #1E1B4B;
+            --text-secondary: #6B7280;
+            --border: #E5E7EB;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+
+        .auth-shell {
+            width: min(1120px, 100%);
+            min-height: min(760px, calc(100vh - 48px));
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-radius: 20px;
+            overflow: hidden;
+            background: var(--surface);
+            box-shadow: 0 14px 40px rgba(108, 99, 255, 0.12);
+        }
+
+        .left-panel {
+            padding: 40px;
+            background: linear-gradient(135deg, #6C63FF, #8B5CF6, #A78BFA);
+            color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.24);
+            display: grid;
+            place-items: center;
+            font-weight: 700;
+        }
+
+        .brand-name {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .hero {
+            margin-top: 60px;
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: 32px;
+            line-height: 1.2;
+            font-weight: 700;
+            color: #FFFFFF;
+        }
+
+        .hero p {
+            margin: 14px 0 0;
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 16px;
+            max-width: 440px;
+        }
+
+        .feature-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        .pill {
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.18);
+            color: #FFFFFF;
+            padding: 8px 14px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .stats-grid {
+            margin-top: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .stat-box {
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 14px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #FFFFFF;
+        }
+
+        .stat-label {
+            margin-top: 4px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            letter-spacing: 0.03em;
+        }
+
+        .right-panel {
+            background: #FFFFFF;
+            padding: 44px 46px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .right-panel h2 {
+            margin: 0;
+            font-size: 32px;
+            color: #1E1B4B;
+        }
+
+        .subtitle {
+            margin-top: 10px;
+            margin-bottom: 26px;
+            color: #6B7280;
+            font-size: 16px;
+        }
+
+        .tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            background: #F3F4F6;
+            padding: 6px;
+            border-radius: 12px;
+            margin-bottom: 22px;
+        }
+
+        .tab {
+            border: none;
+            border-radius: 10px;
+            background: transparent;
+            color: #6B7280;
+            font-weight: 600;
+            font-size: 14px;
+            padding: 11px 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab.active {
+            background: #FFFFFF;
+            color: #6C63FF;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .field {
+            margin-bottom: 16px;
+        }
+
+        .label {
+            margin-bottom: 7px;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-size: 12px;
+            font-weight: 500;
+            color: #6B7280;
+        }
+
+        .input {
+            width: 100%;
+            background: #F8F7FF;
+            border: 0.5px solid #E5E7EB;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 14px;
+            color: #1E1B4B;
+            transition: all 0.2s ease;
+        }
+
+        .input::placeholder {
+            color: #9CA3AF;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: #6C63FF;
+            box-shadow: 0 0 0 4px rgba(108, 99, 255, 0.1);
+            background: #FFFFFF;
+        }
+
+        .role-picker {
+            display: none;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        .register-mode .role-picker {
+            display: grid;
+        }
+
+        .role-card {
+            border: 1px solid #E5E7EB;
+            background: #FFFFFF;
+            border-radius: 12px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .role-card strong {
+            font-size: 14px;
+            color: #1E1B4B;
+        }
+
+        .role-card span {
+            font-size: 12px;
+            color: #6B7280;
+        }
+
+        .role-card.selected {
+            border-color: #6C63FF;
+            background: #EEF2FF;
+        }
+
+        .submit {
+            margin-top: 20px;
+            width: 100%;
+            border: none;
+            border-radius: 10px;
+            background: #6C63FF;
+            color: #FFFFFF;
+            font-size: 16px;
+            font-weight: 700;
+            padding: 13px 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .submit:hover {
+            background: #5A52E0;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(108, 99, 255, 0.2);
+        }
+
+        .submit:active {
+            transform: translateY(0);
+        }
+
+        .feedback {
+            min-height: 20px;
+            margin-top: 12px;
+            font-size: 13px;
+            color: #6B7280;
+        }
+
+        .feedback.error { color: #FF6584; }
+        .feedback.success { color: #22C55E; }
+
+        @media (max-width: 960px) {
+            .auth-shell {
+                grid-template-columns: 1fr;
+                min-height: auto;
+            }
+            .left-panel {
+                min-height: 320px;
+            }
+            .right-panel {
+                padding: 30px 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="auth-shell" id="authShell">
+        <section class="left-panel">
+            <div class="brand">
+                <div class="brand-icon">SD</div>
+                <div class="brand-name">Smart Delivery</div>
+            </div>
+
+            <div class="hero">
+                <h1>Livraison intelligente, experience premium.</h1>
+                <p>Commandez, suivez et livrez en temps reel sur une plateforme multi-services moderne et rapide.</p>
+                <div class="feature-pills">
+                    <span class="pill">Tracking en direct</span>
+                    <span class="pill">Assignation intelligente</span>
+                    <span class="pill">Paiement securise</span>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-value">12K+</div>
+                    <div class="stat-label">COMMANDES / MOIS</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">680+</div>
+                    <div class="stat-label">LIVREURS ACTIFS</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">120+</div>
+                    <div class="stat-label">ZONES COUVERTES</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">4.9/5</div>
+                    <div class="stat-label">SATISFACTION CLIENT</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="right-panel">
+            <h2>Bienvenue</h2>
+            <p class="subtitle">Connectez-vous pour acceder a votre espace Smart Delivery.</p>
+
+            <div class="tabs">
+                <button class="tab active" id="tabLogin" type="button">Connexion</button>
+                <button class="tab" id="tabRegister" type="button">Inscription</button>
+            </div>
+
+            <form id="authForm" novalidate>
+                <div class="field">
+                    <label class="label" for="email">Email</label>
+                    <input class="input" id="email" type="email" placeholder="ex: client@smartdelivery.com" required>
+                </div>
+
+                <div class="field">
+                    <label class="label" for="password">Mot de passe</label>
+                    <input class="input" id="password" type="password" placeholder="Entrez votre mot de passe" required>
+                </div>
+
+                <div class="field role-picker" id="rolePicker">
+                    <button class="role-card selected" type="button" data-role="client">
+                        <strong>Client</strong>
+                        <span>Commander des produits</span>
+                    </button>
+                    <button class="role-card" type="button" data-role="delivery">
+                        <strong>Livreur</strong>
+                        <span>Gerer les livraisons</span>
+                    </button>
+                </div>
+
+                <button class="submit" id="submitBtn" type="submit">Se connecter</button>
+                <div class="feedback" id="feedback"></div>
+            </form>
+        </section>
+    </main>
+
+    <script>
+        const shell = document.getElementById("authShell");
+        const tabLogin = document.getElementById("tabLogin");
+        const tabRegister = document.getElementById("tabRegister");
+        const rolePicker = document.getElementById("rolePicker");
+        const roleCards = Array.from(document.querySelectorAll(".role-card"));
+        const submitBtn = document.getElementById("submitBtn");
+        const authForm = document.getElementById("authForm");
+        const feedback = document.getElementById("feedback");
+        let registerMode = false;
+        let selectedRole = "client";
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(";").shift();
+            return "";
+        }
+
+        async function apiRequest(url, payload) {
+            const response = await fetch(url, {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                body: JSON.stringify(payload)
+            });
+            let data = {};
+            try {
+                data = await response.json();
+            } catch (error) {
+                data = {};
+            }
+            return { ok: response.ok, status: response.status, data };
+        }
+
+        function setMode(isRegister) {
+            registerMode = isRegister;
+            shell.classList.toggle("register-mode", isRegister);
+            tabLogin.classList.toggle("active", !isRegister);
+            tabRegister.classList.toggle("active", isRegister);
+            submitBtn.textContent = isRegister ? "Creer un compte" : "Se connecter";
+            feedback.textContent = "";
+            feedback.className = "feedback";
+            rolePicker.style.display = isRegister ? "grid" : "none";
+        }
+
+        tabLogin.addEventListener("click", () => setMode(false));
+        tabRegister.addEventListener("click", () => setMode(true));
+
+        roleCards.forEach((card) => {
+            card.addEventListener("click", () => {
+                selectedRole = card.dataset.role;
+                roleCards.forEach((el) => el.classList.remove("selected"));
+                card.classList.add("selected");
+            });
+        });
+
+        authForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const email = document.getElementById("email").value.trim().toLowerCase();
+            const password = document.getElementById("password").value;
+
+            if (!email || !password) {
+                feedback.textContent = "Veuillez remplir tous les champs.";
+                feedback.className = "feedback error";
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = registerMode ? "Creation..." : "Connexion...";
+
+            try {
+                if (registerMode) {
+                    const registerResponse = await apiRequest("/register", {
+                        username: email,
+                        password,
+                        role: selectedRole
+                    });
+
+                    if (!registerResponse.ok) {
+                        feedback.textContent = registerResponse.data.detail || "Erreur lors de l'inscription.";
+                        feedback.className = "feedback error";
+                        return;
+                    }
+                    feedback.textContent = "Compte cree avec succes. Vous pouvez vous connecter.";
+                    feedback.className = "feedback success";
+                    setMode(false);
+                } else {
+                    const loginResponse = await apiRequest("/login", {
+                        username: email,
+                        password
+                    });
+
+                    if (!loginResponse.ok) {
+                        feedback.textContent = loginResponse.data.detail || "Identifiants invalides.";
+                        feedback.className = "feedback error";
+                        return;
+                    }
+                    feedback.textContent = "Connexion reussie. Redirection...";
+                    feedback.className = "feedback success";
+                    window.location.href = "/app/dashboard";
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = registerMode ? "Creer un compte" : "Se connecter";
+            }
+        });
+    </script>
+</body>
+</html>

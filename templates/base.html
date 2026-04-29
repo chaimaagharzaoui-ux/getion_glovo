@@ -1,0 +1,51 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Smart Delivery Platform{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'css/layout.css' %}">
+</head>
+<body class="page-fade">
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-mark"></div>
+                <div>
+                    <h3>Smart Delivery</h3>
+                    <p>Premium Platform</p>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a class="sidebar-link {% block nav_dashboard %}{% endblock %}" href="#">Tableau de bord</a>
+                <a class="sidebar-link {% block nav_orders %}{% endblock %}" href="#">Commandes</a>
+                <a class="sidebar-link {% block nav_products %}{% endblock %}" href="#">Produits</a>
+                <a class="sidebar-link {% block nav_tracking %}{% endblock %}" href="#">Tracking</a>
+                <a class="sidebar-link {% block nav_settings %}{% endblock %}" href="#">Parametres</a>
+            </nav>
+        </aside>
+
+        <main class="main-area">
+            <header class="top-header">
+                <h3>{% block header_title %}Dashboard{% endblock %}</h3>
+                <div class="header-user">
+                    <span class="header-notification" aria-label="Notifications">🔔</span>
+                    <span>{% block header_user %}Utilisateur{% endblock %}</span>
+                </div>
+            </header>
+            <section class="content">
+                {% block content %}{% endblock %}
+            </section>
+        </main>
+
+        <nav class="mobile-bottom-nav">
+            <a class="mobile-bottom-link {% block mob_dashboard %}{% endblock %}" href="#">Dashboard</a>
+            <a class="mobile-bottom-link {% block mob_orders %}{% endblock %}" href="#">Commandes</a>
+            <a class="mobile-bottom-link {% block mob_tracking %}{% endblock %}" href="#">Tracking</a>
+            <a class="mobile-bottom-link {% block mob_profile %}{% endblock %}" href="#">Profil</a>
+        </nav>
+    </div>
+</body>
+</html>

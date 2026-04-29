@@ -1,0 +1,36 @@
+:root {
+    --primary: #6C63FF;
+    --primary-light: #EEF2FF;
+    --accent: #FF6584;
+    --success: #22C55E;
+    --warning: #F59E0B;
+    --surface: #FFFFFF;
+    --background: #F8F7FF;
+    --text-primary: #1E1B4B;
+    --text-secondary: #6B7280;
+    --border: #E5E7EB;
+    --shadow: rgba(108, 99, 255, 0.08);
+
+    --font-family: "Inter", "Segoe UI", Arial, sans-serif;
+    --radius-card: 12px;
+    --radius-input: 8px;
+    --radius-pill: 999px;
+    --elevation: 0 4px 24px var(--shadow);
+    --transition-fast: 0.2s ease;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+    --text-xs: 12px;
+    --text-sm: 14px;
+    --text-md: 16px;
+    --text-lg: 20px;
+    --text-xl: 24px;
+    --text-2xl: 32px;
+}

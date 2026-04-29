@@ -1,0 +1,26 @@
+{% extends "users/base.html" %}
+{% block title %}Dashboard Manager{% endblock %}
+{% block page_title %}Dashboard Manager{% endblock %}
+{% block page_subtitle %}Gestion operationnelle des activites commerciales et du stock par zone.{% endblock %}
+{% block content %}
+<section class="grid">
+    <article class="card">
+        <h3>Gestion commerciale</h3>
+        <p>Creer et maintenir les entreprises partenaires de la plateforme.</p>
+        <div class="actions"><a class="btn" href="/companies/">Gerer les entreprises</a></div>
+    </article>
+    <article class="card">
+        <h3>Organisation terrain</h3>
+        <p>Structurer les zones et les branches pour optimiser la couverture logistique.</p>
+        <div class="actions">
+            <a class="btn" href="/zones/">Zones</a>
+            <a class="btn alt" href="/branches/">Branches</a>
+        </div>
+    </article>
+    <article class="card">
+        <h3>Catalogue et stock</h3>
+        <p>Maintenir la disponibilite produits par branche en temps reel.</p>
+        <div class="actions"><a class="btn" href="/manage/products/">Produits et inventaire</a></div>
+    </article>
+</section>
+{% endblock %}

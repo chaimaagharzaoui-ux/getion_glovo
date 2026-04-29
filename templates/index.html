@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Delivery Platform</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #111827;
+            --muted: #94a3b8;
+            --text: #e2e8f0;
+            --accent: #22c55e;
+            --danger: #ef4444;
+            --line: #1f2937;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+            color: var(--text);
+        }
+        .container {
+            width: min(1200px, 95%);
+            margin: 24px auto;
+        }
+        h1 { margin: 0 0 8px; }
+        .subtitle { color: var(--muted); margin: 0 0 22px; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            background: rgba(17, 24, 39, 0.95);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 14px;
+        }
+        .card h2 {
+            margin: 0 0 12px;
+            font-size: 18px;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            color: #cbd5e1;
+            margin: 10px 0 6px;
+        }
+        input, textarea, button, select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: var(--text);
+        }
+        button {
+            cursor: pointer;
+            background: #16a34a;
+            border: none;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        button.secondary { background: #2563eb; }
+        button.warn { background: #d97706; }
+        button.danger { background: #dc2626; }
+        pre {
+            background: #020617;
+            color: #cbd5e1;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 10px;
+            max-height: 280px;
+            overflow: auto;
+            font-size: 12px;
+        }
+        .status {
+            margin: 10px 0 0;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .good { color: var(--accent); }
+        .bad { color: var(--danger); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Smart Multi-Service Delivery Platform</h1>
+        <p class="subtitle">Interface de test complete: login, commandes, livraison et tracking WebSocket en direct.</p>
+        <p><a href="/app/login" style="color:#86efac;font-weight:bold;text-decoration:none;">Acceder a l'interface moderne /app/login</a></p>
+
+        <div class="grid">
+            <section class="card">
+                <h2>1) Authentification</h2>
+                <label>Username</label>
+                <input id="username" placeholder="ex: client1" />
+                <label>Password</label>
+                <input id="password" type="password" placeholder="mot de passe" />
+                <button onclick="loginUser()">Se connecter</button>
+                <button class="danger" onclick="logoutUser()">Se deconnecter</button>
+                <p id="authStatus" class="status">Non connecte</p>
+            </section>
+
+            <section class="card">
+                <h2>2) Produits</h2>
+                <label>Filtrer par Branch ID (optionnel)</label>
+                <input id="productsBranchId" placeholder="ex: 1" />
+                <button class="secondary" onclick="loadProducts()">Charger les produits</button>
+                <pre id="productsOutput">[]</pre>
+            </section>
+
+            <section class="card">
+                <h2>3) Creation commande (Client)</h2>
+                <label>Branch ID</label>
+                <input id="orderBranchId" placeholder="ex: 1" />
+                <label>Latitude client</label>
+                <input id="clientLat" placeholder="ex: 33.5731" />
+                <label>Longitude client</label>
+                <input id="clientLng" placeholder="ex: -7.5898" />
+                <label>Items JSON (product_id, quantity)</label>
+                <textarea id="orderItems" rows="4">[{"product_id":1,"quantity":1}]</textarea>
+                <button onclick="createOrder()">Creer commande</button>
+                <pre id="createOrderOutput">{}</pre>
+            </section>
+
+            <section class="card">
+                <h2>4) Tracking commande</h2>
+                <label>Order ID</label>
+                <input id="trackOrderId" placeholder="ex: 1" />
+                <button class="secondary" onclick="trackOrder()">Voir commande</button>
+                <pre id="trackOrderOutput">{}</pre>
+            </section>
+
+            <section class="card">
+                <h2>5) Outils Livreur</h2>
+                <button class="secondary" onclick="loadDriverOrders()">Mes livraisons</button>
+                <label>Delivery ID</label>
+                <input id="deliveryId" placeholder="ex: 1" />
+                <button onclick="driverAccept()">Accepter</button>
+                <button class="warn" onclick="driverReject()">Refuser</button>
+                <label>Latitude</label>
+                <input id="deliveryLat" placeholder="ex: 33.58" />
+                <label>Longitude</label>
+                <input id="deliveryLng" placeholder="ex: -7.60" />
+                <button class="secondary" onclick="updateLocation()">Update Position</button>
+                <button onclick="completeDelivery()">Terminer livraison</button>
+                <pre id="driverOutput">{}</pre>
+            </section>
+
+            <section class="card">
+                <h2>6) WebSocket Live</h2>
+                <label>Delivery ID a ecouter</label>
+                <input id="wsDeliveryId" placeholder="ex: 1" />
+                <button class="secondary" onclick="connectWS()">Connecter WS</button>
+                <button class="danger" onclick="disconnectWS()">Deconnecter WS</button>
+                <p id="wsStatus" class="status">WebSocket inactif</p>
+                <pre id="wsOutput">[]</pre>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return '';
+        }
+
+        const csrfToken = () => getCookie('csrftoken');
+
+        async function apiRequest(url, method = 'GET', body = null) {
+            const options = {
+                method,
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() }
+            };
+            if (body) options.body = JSON.stringify(body);
+            const res = await fetch(url, options);
+            let data = {};
+            try { data = await res.json(); } catch (e) { data = { detail: 'No JSON response' }; }
+            return { ok: res.ok, status: res.status, data };
+        }
+
+        function write(id, data) {
+            document.getElementById(id).textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function loginUser() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const result = await apiRequest('/login', 'POST', { username, password });
+            const el = document.getElementById('authStatus');
+            if (result.ok) {
+                el.textContent = `Connecte: ${result.data.username} (${result.data.role})`;
+                el.className = 'status good';
+            } else {
+                el.textContent = `Erreur ${result.status}: ${result.data.detail || 'login failed'}`;
+                el.className = 'status bad';
+            }
+        }
+
+        async function logoutUser() {
+            const result = await apiRequest('/logout', 'POST');
+            const el = document.getElementById('authStatus');
+            el.textContent = result.ok ? 'Deconnecte' : `Erreur ${result.status}`;
+            el.className = result.ok ? 'status' : 'status bad';
+        }
+
+        async function loadProducts() {
+            const branch = document.getElementById('productsBranchId').value.trim();
+            const qs = branch ? `?branch=${encodeURIComponent(branch)}` : '';
+            const result = await apiRequest(`/products${qs}`);
+            write('productsOutput', result.data);
+        }
+
+        async function createOrder() {
+            const branch_id = Number(document.getElementById('orderBranchId').value);
+            const client_lat = parseFloat(document.getElementById('clientLat').value);
+            const client_lng = parseFloat(document.getElementById('clientLng').value);
+            let items = [];
+            try {
+                items = JSON.parse(document.getElementById('orderItems').value);
+            } catch (e) {
+                write('createOrderOutput', { error: 'JSON items invalide' });
+                return;
+            }
+            const payload = { branch_id, items };
+            if (!Number.isNaN(client_lat)) payload.client_lat = client_lat;
+            if (!Number.isNaN(client_lng)) payload.client_lng = client_lng;
+            const result = await apiRequest('/order/create', 'POST', payload);
+            write('createOrderOutput', result.data);
+        }
+
+        async function trackOrder() {
+            const id = document.getElementById('trackOrderId').value.trim();
+            const result = await apiRequest(`/order/track/${id}`);
+            write('trackOrderOutput', result.data);
+        }
+
+        async function loadDriverOrders() {
+            const result = await apiRequest('/driver/orders');
+            write('driverOutput', result.data);
+        }
+
+        async function driverAccept() {
+            const delivery_id = Number(document.getElementById('deliveryId').value);
+            const result = await apiRequest('/driver/accept', 'POST', { delivery_id });
+            write('driverOutput', result.data);
+        }
+
+        async function driverReject() {
+            const delivery_id = Number(document.getElementById('deliveryId').value);
+            const result = await apiRequest('/driver/reject', 'POST', { delivery_id });
+            write('driverOutput', result.data);
+        }
+
+        async function updateLocation() {
+            const delivery_id = Number(document.getElementById('deliveryId').value);
+            const lat = parseFloat(document.getElementById('deliveryLat').value);
+            const lng = parseFloat(document.getElementById('deliveryLng').value);
+            const result = await apiRequest('/driver/update-location', 'POST', { delivery_id, lat, lng });
+            write('driverOutput', result.data);
+        }
+
+        async function completeDelivery() {
+            const delivery_id = Number(document.getElementById('deliveryId').value);
+            const result = await apiRequest('/driver/complete', 'POST', { delivery_id });
+            write('driverOutput', result.data);
+        }
+
+        function connectWS() {
+            const deliveryId = document.getElementById('wsDeliveryId').value.trim();
+            if (!deliveryId) return;
+            disconnectWS();
+            const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            ws = new WebSocket(`${protocol}://${window.location.host}/ws/tracking/${deliveryId}/`);
+            const status = document.getElementById('wsStatus');
+
+            ws.onopen = () => {
+                status.textContent = `WebSocket connecte sur delivery ${deliveryId}`;
+                status.className = 'status good';
+            };
+            ws.onmessage = (event) => {
+                const box = document.getElementById('wsOutput');
+                let arr = [];
+                try { arr = JSON.parse(box.textContent); } catch (e) { arr = []; }
+                try { arr.unshift(JSON.parse(event.data)); } catch (e) { arr.unshift({ raw: event.data }); }
+                box.textContent = JSON.stringify(arr.slice(0, 40), null, 2);
+            };
+            ws.onclose = () => {
+                status.textContent = 'WebSocket ferme';
+                status.className = 'status';
+            };
+            ws.onerror = () => {
+                status.textContent = 'Erreur WebSocket';
+                status.className = 'status bad';
+            };
+        }
+
+        function disconnectWS() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+    </script>
+</body>
+</html>

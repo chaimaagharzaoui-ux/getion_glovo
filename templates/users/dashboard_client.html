@@ -1,0 +1,23 @@
+{% extends "users/base.html" %}
+{% block title %}Dashboard Client{% endblock %}
+{% block page_title %}Dashboard Client{% endblock %}
+{% block page_subtitle %}Navigation rapide du catalogue, commandes et suivi de livraison.{% endblock %}
+{% block content %}
+<section class="grid">
+    <article class="card">
+        <h3>Catalogue par zone</h3>
+        <p>Consulter les produits disponibles autour de votre zone.</p>
+        <code>/products?zone=&lt;zone_id&gt;</code>
+    </article>
+    <article class="card">
+        <h3>Panier et commande</h3>
+        <p>Creer votre commande et lancer l'assignation automatique du livreur.</p>
+        <code>/order/create</code>
+    </article>
+    <article class="card">
+        <h3>Suivi livraison</h3>
+        <p>Verifier le statut de votre commande en direct.</p>
+        <code>/order/track/&lt;id&gt;</code>
+    </article>
+</section>
+{% endblock %}

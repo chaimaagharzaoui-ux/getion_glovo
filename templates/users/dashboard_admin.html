@@ -1,0 +1,28 @@
+{% extends "users/base.html" %}
+{% block title %}Dashboard Admin{% endblock %}
+{% block page_title %}Dashboard Administrateur{% endblock %}
+{% block page_subtitle %}Vision globale, supervision des operations et controle des modules strategiques.{% endblock %}
+{% block content %}
+<section class="grid">
+    <article class="card">
+        <h3>Controle global</h3>
+        <p>Pilotage de la plateforme multi-business et suivi des indicateurs majeurs.</p>
+        <span class="pill">KPI</span><span class="pill">Performance</span><span class="pill">Supervision</span>
+        <div class="actions"><a class="btn" href="/dashboard">Voir les statistiques</a></div>
+    </article>
+    <article class="card">
+        <h3>Operations metier</h3>
+        <p>Administration des entreprises, zones, branches et catalogue.</p>
+        <ul>
+            <li><code>/companies/</code></li>
+            <li><code>/zones/</code> et <code>/branches/</code></li>
+            <li><code>/manage/products/</code></li>
+        </ul>
+    </article>
+    <article class="card">
+        <h3>Flux commandes</h3>
+        <p>Suivre les commandes du systeme et l'etat de livraison en temps reel.</p>
+        <div class="actions"><a class="btn alt" href="/orders">Acceder aux commandes</a></div>
+    </article>
+</section>
+{% endblock %}

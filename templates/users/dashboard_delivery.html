@@ -1,0 +1,23 @@
+{% extends "users/base.html" %}
+{% block title %}Dashboard Livreur{% endblock %}
+{% block page_title %}Dashboard Livreur{% endblock %}
+{% block page_subtitle %}Gestion des missions, position GPS et finalisation de livraison.{% endblock %}
+{% block content %}
+<section class="grid">
+    <article class="card">
+        <h3>Missions actives</h3>
+        <p>Consulter vos livraisons assignees et leur statut.</p>
+        <code>/driver/orders</code>
+    </article>
+    <article class="card">
+        <h3>Actions mission</h3>
+        <p>Accepter ou refuser une livraison selon votre disponibilite.</p>
+        <code>/driver/accept</code> <code>/driver/reject</code>
+    </article>
+    <article class="card">
+        <h3>Suivi GPS</h3>
+        <p>Envoyer la position en cours et terminer la mission.</p>
+        <code>/driver/update-location</code> <code>/driver/complete</code>
+    </article>
+</section>
+{% endblock %}

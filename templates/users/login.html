@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion Smart Delivery</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #111827;
+            --line: #1f2937;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --primary: #2563eb;
+            --success: #16a34a;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: Inter, Segoe UI, Arial, sans-serif;
+            background: radial-gradient(circle at top, #1d4ed8 0%, #0f172a 35%);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+        }
+        .layout {
+            width: min(980px, 100%);
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 60px rgba(2, 6, 23, 0.45);
+        }
+        .brand {
+            background: linear-gradient(150deg, #1d4ed8, #0f172a 55%);
+            padding: 28px;
+        }
+        .brand h1 { margin: 0 0 10px; font-size: 28px; }
+        .brand p { color: #bfdbfe; margin: 0; line-height: 1.5; }
+        .chips { margin-top: 16px; }
+        .chip {
+            display: inline-block;
+            margin: 0 8px 8px 0;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.15);
+            font-size: 12px;
+        }
+        .wrap { background: var(--card); padding: 24px; }
+        h2 { margin: 0 0 12px; font-size: 20px; }
+        label { display: block; margin: 8px 0 4px; font-size: 13px; color: var(--muted); }
+        input, select, button {
+            width: 100%;
+            padding: 11px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #334155;
+            background: #0b1220;
+            color: var(--text);
+        }
+        button { background: var(--success); border: none; font-weight: 700; cursor: pointer; }
+        .btn-register { background: var(--primary); }
+        hr { border: none; border-top: 1px solid #273449; margin: 14px 0; }
+        pre {
+            background: #020617;
+            padding: 10px;
+            border-radius: 6px;
+            overflow: auto;
+            max-height: 140px;
+            font-size: 12px;
+        }
+        @media (max-width: 820px) {
+            .layout { grid-template-columns: 1fr; }
+            .brand { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="brand">
+            <h1>Smart Delivery</h1>
+            <p>Plateforme moderne pour la gestion des commandes, livraisons, entreprises et stocks multi-zones.</p>
+            <div class="chips">
+                <span class="chip">Multi-business</span>
+                <span class="chip">Assignation intelligente</span>
+                <span class="chip">Tracking temps reel</span>
+            </div>
+        </aside>
+        <div class="wrap">
+            <h2>Connexion / Inscription</h2>
+            <label>Username</label>
+            <input id="username" />
+            <label>Password</label>
+            <input id="password" type="password" />
+            <button onclick="login()">Se connecter</button>
+
+            <hr>
+
+            <label>Role</label>
+            <select id="role">
+                <option value="client">Client</option>
+                <option value="manager">Manager</option>
+                <option value="delivery">Livreur</option>
+            </select>
+            <label>Telephone</label>
+            <input id="phone" />
+            <label>Zone (optionnel)</label>
+            <select id="zone">
+                <option value="">--</option>
+                {% for zone in zones %}
+                    <option value="{{ zone.id }}">{{ zone.name }}</option>
+                {% endfor %}
+            </select>
+            <button class="btn-register" onclick="registerUser()">S'inscrire</button>
+
+            <pre id="output"></pre>
+        </div>
+    </div>
+    <script>
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return '';
+        }
+        const csrfToken = () => getCookie('csrftoken');
+        async function request(url, method, payload) {
+            const response = await fetch(url, {
+                method,
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+                body: JSON.stringify(payload || {})
+            });
+            let data = {};
+            try { data = await response.json(); } catch (err) { data = {}; }
+            document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+            if (response.ok && url === '/login') window.location.href = '/app/dashboard';
+        }
+        function login() {
+            request('/login', 'POST', {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            });
+        }
+        function registerUser() {
+            request('/register', 'POST', {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value,
+                role: document.getElementById('role').value,
+                phone: document.getElementById('phone').value,
+                zone_id: document.getElementById('zone').value || null
+            });
+        }
+    </script>
+</body>
+</html>
