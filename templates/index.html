@@ -1,313 +1,1000 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Delivery Platform</title>
-    <style>
-        :root {
-            --bg: #0f172a;
-            --card: #111827;
-            --muted: #94a3b8;
-            --text: #e2e8f0;
-            --accent: #22c55e;
-            --danger: #ef4444;
-            --line: #1f2937;
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(180deg, #0b1220 0%, #111827 100%);
-            color: var(--text);
-        }
-        .container {
-            width: min(1200px, 95%);
-            margin: 24px auto;
-        }
-        h1 { margin: 0 0 8px; }
-        .subtitle { color: var(--muted); margin: 0 0 22px; }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 16px;
-        }
-        .card {
-            background: rgba(17, 24, 39, 0.95);
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            padding: 14px;
-        }
-        .card h2 {
-            margin: 0 0 12px;
-            font-size: 18px;
-        }
-        label {
-            display: block;
-            font-size: 13px;
-            color: #cbd5e1;
-            margin: 10px 0 6px;
-        }
-        input, textarea, button, select {
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #334155;
-            background: #0f172a;
-            color: var(--text);
-        }
-        button {
-            cursor: pointer;
-            background: #16a34a;
-            border: none;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-        button.secondary { background: #2563eb; }
-        button.warn { background: #d97706; }
-        button.danger { background: #dc2626; }
-        pre {
-            background: #020617;
-            color: #cbd5e1;
-            border: 1px solid #1e293b;
-            border-radius: 8px;
-            padding: 10px;
-            max-height: 280px;
-            overflow: auto;
-            font-size: 12px;
-        }
-        .status {
-            margin: 10px 0 0;
-            font-size: 13px;
-            color: var(--muted);
-        }
-        .good { color: var(--accent); }
-        .bad { color: var(--danger); }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Swift Maroc | Livraison intelligente en moins de 30 min</title>
+  <meta name="description" content="Swift est la plateforme de livraison multi-services intelligente au Maroc. Commandez repas, courses et medicaments en moins de 30 minutes." />
+  <meta property="og:title" content="Swift Maroc - Livraison intelligente" />
+  <meta property="og:description" content="Tout ce dont vous avez besoin, livre en moins de 30 min avec Swift." />
+  <meta property="og:image" content="https://images.unsplash.com/photo-1619546813926-a78fa6372cd2?w=1200&h=630&fit=crop&q=85" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --brand: #FF6B35;
+      --brand-light: #FFF4EF;
+      --brand-mid: #FFE0D0;
+      --dark: #1A0A00;
+      --text: #4A3728;
+      --muted: #9E8070;
+      --surface: #FFFFFF;
+      --background: #FFFBF8;
+      --border: #F0E6DF;
+      --success: #22C55E;
+      --container: min(1200px, 92vw);
+      --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      color: var(--text);
+      background: var(--background);
+      opacity: 0;
+      transition: opacity .5s ease;
+      font-variant-numeric: tabular-nums;
+    }
+    body.is-ready { opacity: 1; }
+    a { text-decoration: none; color: inherit; }
+    h1, h2, h3, h4, p { margin: 0; }
+    h1 { font-size: clamp(36px, 5vw, 56px); letter-spacing: -0.03em; line-height: 1.1; text-shadow: none; }
+    h2 { font-size: clamp(28px, 3.5vw, 42px); letter-spacing: -0.02em; line-height: 1.2; color: var(--dark); }
+    p { line-height: 1.75; font-size: 16px; }
+    .container { width: var(--container); margin: 0 auto; }
+    .section { padding: 80px 0; }
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--brand);
+      margin-bottom: 10px;
+      display: inline-block;
+    }
+    .headline-key { color: var(--brand); }
+    .headline-soft { opacity: .84; display: inline-block; }
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity .7s var(--ease-premium), transform .7s var(--ease-premium);
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal:nth-child(1) { transition-delay: 0s; }
+    .reveal:nth-child(2) { transition-delay: .1s; }
+    .reveal:nth-child(3) { transition-delay: .2s; }
+    .reveal:nth-child(4) { transition-delay: .3s; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid #F0E6DF;
+      box-shadow: 0 2px 8px rgba(255, 107, 53, 0.06);
+      border-radius: 16px;
+      transition: all .3s var(--ease-premium);
+    }
+    .card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 24px 48px rgba(255,107,53,.12), 0 8px 16px rgba(0,0,0,.06);
+      border-color: #FFD4C2;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 12px;
+      padding: 15px 28px;
+      font-weight: 700;
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all .3s var(--ease-premium);
+      position: relative;
+    }
+    .btn:hover { transform: translateY(-3px); }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-ghost { background: transparent; color: var(--dark); border: 1px solid var(--border); }
+    .btn-white { background: #fff; color: var(--brand); }
+    .btn .arrow { transition: transform .3s var(--ease-premium); display: inline-block; }
+    .btn:hover .arrow { transform: translateX(3px); }
+
+    .img-wrap { overflow: hidden; border-radius: 16px; position: relative; }
+    img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      padding: 16px 0;
+      transition: all .3s ease;
+    }
+    .navbar.scrolled {
+      background: rgba(255,255,255,.85);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 20px rgba(0,0,0,.06);
+    }
+    .nav-inner { width: var(--container); margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+    .logo { font-size: 28px; font-weight: 800; color: var(--dark); display: inline-flex; align-items: center; gap: 10px; padding: 2px 6px; border-radius: 999px; transition: box-shadow .3s ease; }
+    .logo:hover { box-shadow: 0 0 0 4px rgba(255,107,53,.15); }
+    .logo-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--brand); }
+    .nav-links { display: flex; gap: 24px; color: var(--muted); font-weight: 600; }
+    .nav-links a { position: relative; }
+    .nav-links a.active { color: var(--brand); }
+    .nav-links a.active::after {
+      content: "";
+      width: 4px;
+      height: 4px;
+      background: var(--brand);
+      border-radius: 50%;
+      display: block;
+      margin: 2px auto 0;
+    }
+    .nav-actions { display: flex; gap: 10px; }
+    .menu-btn { display: none; border: 1px solid var(--border); background: #fff; border-radius: 10px; padding: 8px 12px; font-weight: 600; color: var(--dark); }
+    .mobile-menu { display: none; }
+
+    .hero { min-height: 100vh; display: flex; align-items: center; padding: 100px 0 80px; }
+    .hero-layout { display: flex; align-items: center; gap: 48px; width: 100%; }
+    .hero-left { flex: 0 0 55%; }
+    .hero-right { flex: 0 0 45%; position: relative; display: flex; justify-content: center; }
+    .trust-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .trust-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); animation: pulse 1.8s infinite; }
+    .hero-accent {
+      color: var(--brand);
+      position: relative;
+      display: inline-block;
+    }
+    .hero-accent::after {
+      content: "";
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--brand);
+      border-radius: 2px;
+    }
+    .hero-text { margin: 16px 0 22px; max-width: 620px; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+    .play-circle {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: inline-grid;
+      place-items: center;
+      background: var(--brand-light);
+      color: var(--brand);
+      font-size: 12px;
+    }
+    .trust-row { display: flex; flex-wrap: wrap; gap: 14px; font-size: 14px; color: var(--muted); }
+    .trust-row span { color: var(--success); font-weight: 700; }
+
+    .hero-image-wrap {
+      height: 280px;
+      border-radius: 22px;
+      margin-top: 18px;
+      border: 1px solid var(--border);
+    }
+    .hero-image-wrap::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(255,107,53,.3) 0%, transparent 50%);
+      border-radius: inherit;
+      pointer-events: none;
+    }
+    .phone-shell {
+      width: 286px;
+      height: 568px;
+      border-radius: 40px;
+      background: var(--dark);
+      padding: 14px;
+      box-shadow: 0 28px 44px rgba(0,0,0,.22);
+    }
+    .phone-screen {
+      background: #fff;
+      border-radius: 30px;
+      height: 100%;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .phone-map {
+      flex: 1;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: linear-gradient(145deg, #fff6f0, #ffefe5);
+      position: relative;
+      overflow: hidden;
+    }
+    .phone-map::before {
+      content: "";
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--brand);
+      position: absolute;
+      left: 62%;
+      top: 48%;
+      animation: pulse 2s infinite;
+    }
+    .eta-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      color: var(--dark);
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .bar { height: 8px; border-radius: 999px; background: var(--brand-light); overflow: hidden; margin-top: 8px; }
+    .bar span { display: block; width: 72%; height: 100%; background: var(--brand); animation: loadBar 2.3s ease-in-out infinite; }
+    .driver-row { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 13px; }
+    .driver-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #ffc8b2, #ff9672); }
+
+    .float-card {
+      position: absolute;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 20px 60px rgba(0,0,0,.15), 0 4px 16px rgba(0,0,0,.08);
+      animation: floaty 3s ease-in-out infinite;
+    }
+    .float-1 { top: 26px; left: 18px; background: #ECFDF3; color: #166534; }
+    .float-2 { top: 82px; right: 16px; background: #fff; color: var(--dark); }
+    .float-3 { bottom: 104px; left: 20px; background: var(--brand); color: #fff; }
+    .float-4 { bottom: 20px; right: 14px; background: #fff; color: var(--dark); }
+    .float-4 small { display: block; color: var(--success); font-size: 11px; margin-top: 2px; }
+
+    .problem { background: #fff; text-align: center; }
+    .pain-grid { margin-top: 28px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .pain-card { padding: 22px; text-align: left; background: #fff; }
+    .pain-card:hover { background: #FFF4EF; }
+    .pain-card .icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #fff;
+      border: 1px solid #FFDCCF;
+      display: grid;
+      place-items: center;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+    .pain-card:hover .icon { animation: iconpulse .4s ease; }
+    .bridge { margin-top: 20px; font-size: 20px; color: var(--brand); font-weight: 700; }
+
+    .solution { background: var(--background); }
+    .solution-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+    .role-card { padding: 15px; margin-top: 12px; border-left: 4px solid var(--brand); }
+    .role-card h4 { font-size: 17px; color: var(--dark); margin-bottom: 4px; }
+    .role-card small { color: var(--muted); display: block; margin-bottom: 7px; }
+    .role-card a { color: var(--brand); font-weight: 700; font-size: 14px; }
+    .solution-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+      align-items: stretch;
+    }
+    .sol-tall { grid-row: span 2; min-height: 402px; }
+    .sol-small { height: 195px; }
+    .solution-mobile-img { display: none; margin-top: 14px; height: 240px; }
+
+    .how { background: #fff; }
+    .steps {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      position: relative;
+    }
+    .step-card { padding: 14px; position: relative; z-index: 1; }
+    .step-card:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      border-top: 2px dashed #FFD4C2;
+      top: 52px;
+      width: calc(100% - 80px);
+      left: 40px;
+      z-index: 0;
+    }
+    .step-image { height: 160px; border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+    .step-badge {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--brand);
+      color: #fff;
+      font-weight: 800;
+      display: grid;
+      place-items: center;
+      border: 3px solid #fff;
+      box-shadow: 0 0 0 3px #FF6B35;
+      margin-bottom: 10px;
+      transition: all .28s var(--ease-premium);
+    }
+    .step-card:hover .step-badge { background: #fff; color: var(--brand); }
+    .step-card h3 { font-size: 19px; color: var(--dark); margin-bottom: 6px; }
+    .quote-box {
+      margin-top: 24px;
+      border: 2px solid var(--brand);
+      border-radius: 16px;
+      text-align: center;
+      padding: 22px;
+      background: #fff7f3;
+      color: var(--dark);
+      font-weight: 700;
+      font-size: 20px;
+    }
+    .quote-box span { display: block; margin-top: 8px; font-size: 14px; color: var(--muted); }
+
+    .proof { background: var(--brand); color: #fff; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .stat {
+      text-align: center;
+      border-top: 3px solid rgba(255,255,255,.4);
+      padding-top: 20px;
+    }
+    .stat-value {
+      font-size: clamp(30px, 4vw, 46px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+    }
+    .testimonials-wrap { overflow: hidden; }
+    .testimonials-track { display: flex; gap: 14px; transition: transform .5s var(--ease-premium); }
+    .testimonial {
+      min-width: calc(33.333% - 10px);
+      background: #fff;
+      color: var(--dark);
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .testimonial::after {
+      content: '"';
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      font-size: 80px;
+      color: #FFE8DF;
+      font-family: serif;
+      line-height: 1;
+      z-index: 0;
+      transition: color .2s ease;
+    }
+    .testimonial:hover { border-color: var(--brand); }
+    .testimonial:hover::after { color: rgba(255,107,53,.2); }
+    .testimonial p, .testimonial .meta { position: relative; z-index: 1; }
+    .meta { margin-top: 12px; display: flex; align-items: center; gap: 10px; }
+    .avatar-wrap { width: 52px; height: 52px; border-radius: 50%; overflow: hidden; flex-shrink: 0; }
+    .stars { color: #F59E0B; font-size: 14px; letter-spacing: 1px; }
+
+    .features { background: var(--background); }
+    .features-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .feature-visual { padding: 22px; border-radius: 24px; }
+    .tracker-ui {
+      background: #fff;
+      border: 1px solid #FFE2D5;
+      border-radius: 16px;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+    .track-row {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: 26px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+    .circle-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #ECFDF3;
+      color: #166534;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .badge-ok { padding: 4px 8px; border-radius: 999px; background: #ECFDF3; color: #166534; font-size: 11px; font-weight: 700; }
+    .badge-live { padding: 4px 8px; border-radius: 999px; background: #FFF4EF; color: var(--brand); font-size: 11px; font-weight: 700; }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--brand);
+      display: inline-block;
+      margin-right: 5px;
+      animation: pulse 1.5s infinite;
+    }
+    .feature-tabs { display: grid; gap: 10px; }
+    .feature-tab { padding: 14px; cursor: pointer; border-left: 4px solid transparent; }
+    .feature-tab.active { border-left-color: var(--brand); background: var(--brand-light); }
+    .feature-tab h4 { color: var(--dark); margin-bottom: 4px; font-size: 18px; }
+
+    .business { background: #fff; }
+    .business-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+    .benefit-list { display: grid; gap: 10px; margin: 18px 0; }
+    .benefit {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--dark);
+      font-weight: 600;
+    }
+    .check-svg {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+    .check-svg path {
+      stroke: var(--brand);
+      stroke-width: 2.5;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 20;
+      stroke-dashoffset: 20;
+      transition: stroke-dashoffset .7s var(--ease-premium);
+    }
+    .check-svg.draw path { stroke-dashoffset: 0; }
+
+    .b2b-image-wrap {
+      margin-top: 16px;
+      height: 340px;
+      border-radius: 22px;
+      position: relative;
+      z-index: 1;
+    }
+    .b2b-image-wrap::before {
+      content: "";
+      position: absolute;
+      top: -12px;
+      left: -12px;
+      right: 12px;
+      bottom: 12px;
+      border: 2px solid #FF6B35;
+      border-radius: 22px;
+      z-index: -1;
+    }
+
+    .pricing {
+      position: relative;
+      border-radius: 24px;
+      padding: 30px 24px 24px;
+      background: linear-gradient(white,white) padding-box, linear-gradient(135deg,#FF6B35,#FF8C42) border-box;
+      border: 2px solid transparent;
+    }
+    .popular {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--brand);
+      color: #fff;
+      padding: 5px 16px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .pricing h3 { color: var(--dark); font-size: 28px; margin: 8px 0; }
+    .pricing ul { margin: 0 0 20px 18px; padding: 0; color: var(--muted); line-height: 1.8; }
+
+    .final-cta {
+      background: linear-gradient(135deg, #FF6B35, #FF8C42);
+      color: #fff;
+      text-align: center;
+      padding: 80px 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .orb { position: absolute; border-radius: 50%; background: rgba(255,255,255,.05); pointer-events: none; }
+    .orb-1 { width: 300px; height: 300px; top: -100px; left: -80px; }
+    .orb-2 { width: 200px; height: 200px; bottom: -60px; right: 10%; }
+    .orb-3 { width: 150px; height: 150px; top: 20%; right: -40px; }
+    .final-cta h2 { color: #fff; margin-bottom: 10px; }
+    .final-cta p { opacity: .86; margin-bottom: 20px; }
+    .btn-cta-main { background: #fff; color: var(--brand); }
+    .btn-cta-main:hover { background: var(--brand); color: #fff; }
+    .btn-cta-main::after {
+      content: "";
+      position: absolute;
+      inset: -8px;
+      border-radius: inherit;
+      border: 2px solid rgba(255,255,255,.5);
+      animation: ringPulse 2s infinite;
+      pointer-events: none;
+    }
+
+    footer {
+      background: var(--dark);
+      color: #fff;
+      padding: 60px 0 0;
+      position: relative;
+    }
+    footer::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, #FF6B35, transparent);
+    }
+    .footer-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 24px; }
+    .footer-col h4 { margin-bottom: 10px; font-size: 17px; }
+    .footer-col a, .footer-col p { display: block; color: rgba(255,255,255,.78); margin-bottom: 8px; font-size: 14px; transition: all .2s ease; }
+    .footer-col a:hover { color: #fff; transform: translateX(4px); }
+    .socials { display: flex; gap: 10px; margin-top: 10px; }
+    .socials a {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.1);
+      display: grid;
+      place-items: center;
+      transition: all .2s ease;
+    }
+    .socials a:hover { background: var(--brand); transform: rotate(8deg) scale(1.1); }
+    .footer-bottom {
+      margin-top: 26px;
+      border-top: 1px solid rgba(255,255,255,.1);
+      padding: 14px 0;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 13px;
+      color: rgba(255,255,255,.7);
+    }
+
+    .mobile-sticky-cta {
+      display: none;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 999;
+      background: #fff;
+      border-top: 1px solid #F0E6DF;
+      padding: 12px 24px;
+    }
+    .mobile-sticky-cta a { width: 100%; justify-content: center; display: inline-flex; }
+
+    @media (max-width: 1024px) {
+      .hero { min-height: auto; }
+      .hero-layout, .solution-layout, .features-layout, .business-layout { display: grid; grid-template-columns: 1fr; }
+      .hero-left, .hero-right { flex: auto; }
+      .phone-shell { margin: 0 auto; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .steps { grid-template-columns: repeat(2, 1fr); }
+      .step-card:nth-child(2)::after, .step-card:nth-child(4)::after { display: none; }
+      .testimonial { min-width: calc(50% - 7px); }
+      .footer-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 767px) {
+      .section, .final-cta { padding: 60px 0; }
+      .nav-links, .nav-actions { display: none; }
+      .menu-btn { display: inline-block; }
+      .mobile-menu {
+        display: none;
+        width: var(--container);
+        margin: 10px auto 0;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+      .mobile-menu.open { display: block; }
+      .mobile-menu a { display: block; padding: 10px; font-weight: 600; }
+      .hero { padding-top: 86px; }
+      .hero-image-wrap { height: 220px; }
+      .float-2, .float-3, .float-4 { display: none; }
+      .steps { grid-template-columns: repeat(2, 1fr); }
+      .step-card::after { display: none !important; }
+      .pain-grid { grid-template-columns: 1fr; }
+      .solution-grid { display: none; }
+      .solution-mobile-img { display: block; }
+      .stats { grid-template-columns: 1fr; }
+      .testimonials-wrap { overflow-x: auto; scroll-snap-type: x mandatory; -ms-overflow-style: none; scrollbar-width: none; }
+      .testimonials-wrap::-webkit-scrollbar { display: none; }
+      .testimonials-track { width: max-content; }
+      .testimonial { min-width: 85vw; scroll-snap-align: start; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .mobile-sticky-cta { display: block; }
+      footer { padding-bottom: 90px; }
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255,107,53,.45); }
+      70% { box-shadow: 0 0 0 10px rgba(255,107,53,0); }
+      100% { box-shadow: 0 0 0 0 rgba(255,107,53,0); }
+    }
+    @keyframes loadBar {
+      0% { width: 52%; }
+      50% { width: 84%; }
+      100% { width: 52%; }
+    }
+    @keyframes floaty {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    @keyframes ringPulse {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.14); opacity: 0; }
+    }
+    @keyframes iconpulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Smart Multi-Service Delivery Platform</h1>
-        <p class="subtitle">Interface de test complete: login, commandes, livraison et tracking WebSocket en direct.</p>
-        <p><a href="/app/login" style="color:#86efac;font-weight:bold;text-decoration:none;">Acceder a l'interface moderne /app/login</a></p>
-
-        <div class="grid">
-            <section class="card">
-                <h2>1) Authentification</h2>
-                <label>Username</label>
-                <input id="username" placeholder="ex: client1" />
-                <label>Password</label>
-                <input id="password" type="password" placeholder="mot de passe" />
-                <button onclick="loginUser()">Se connecter</button>
-                <button class="danger" onclick="logoutUser()">Se deconnecter</button>
-                <p id="authStatus" class="status">Non connecte</p>
-            </section>
-
-            <section class="card">
-                <h2>2) Produits</h2>
-                <label>Filtrer par Branch ID (optionnel)</label>
-                <input id="productsBranchId" placeholder="ex: 1" />
-                <button class="secondary" onclick="loadProducts()">Charger les produits</button>
-                <pre id="productsOutput">[]</pre>
-            </section>
-
-            <section class="card">
-                <h2>3) Creation commande (Client)</h2>
-                <label>Branch ID</label>
-                <input id="orderBranchId" placeholder="ex: 1" />
-                <label>Latitude client</label>
-                <input id="clientLat" placeholder="ex: 33.5731" />
-                <label>Longitude client</label>
-                <input id="clientLng" placeholder="ex: -7.5898" />
-                <label>Items JSON (product_id, quantity)</label>
-                <textarea id="orderItems" rows="4">[{"product_id":1,"quantity":1}]</textarea>
-                <button onclick="createOrder()">Creer commande</button>
-                <pre id="createOrderOutput">{}</pre>
-            </section>
-
-            <section class="card">
-                <h2>4) Tracking commande</h2>
-                <label>Order ID</label>
-                <input id="trackOrderId" placeholder="ex: 1" />
-                <button class="secondary" onclick="trackOrder()">Voir commande</button>
-                <pre id="trackOrderOutput">{}</pre>
-            </section>
-
-            <section class="card">
-                <h2>5) Outils Livreur</h2>
-                <button class="secondary" onclick="loadDriverOrders()">Mes livraisons</button>
-                <label>Delivery ID</label>
-                <input id="deliveryId" placeholder="ex: 1" />
-                <button onclick="driverAccept()">Accepter</button>
-                <button class="warn" onclick="driverReject()">Refuser</button>
-                <label>Latitude</label>
-                <input id="deliveryLat" placeholder="ex: 33.58" />
-                <label>Longitude</label>
-                <input id="deliveryLng" placeholder="ex: -7.60" />
-                <button class="secondary" onclick="updateLocation()">Update Position</button>
-                <button onclick="completeDelivery()">Terminer livraison</button>
-                <pre id="driverOutput">{}</pre>
-            </section>
-
-            <section class="card">
-                <h2>6) WebSocket Live</h2>
-                <label>Delivery ID a ecouter</label>
-                <input id="wsDeliveryId" placeholder="ex: 1" />
-                <button class="secondary" onclick="connectWS()">Connecter WS</button>
-                <button class="danger" onclick="disconnectWS()">Deconnecter WS</button>
-                <p id="wsStatus" class="status">WebSocket inactif</p>
-                <pre id="wsOutput">[]</pre>
-            </section>
-        </div>
+  <header class="navbar" id="navbar">
+    <div class="nav-inner">
+      <a href="#top" class="logo"><span class="logo-dot"></span>Swift</a>
+      <nav class="nav-links">
+        <a href="#fonctionnalites" class="active">Fonctionnalites</a>
+        <a href="#entreprises">Entreprises</a>
+        <a href="#livreurs">Livreurs</a>
+        <a href="#apropos">A propos</a>
+      </nav>
+      <div class="nav-actions">
+        <a href="/app/login" class="btn btn-ghost">Se connecter</a>
+        <a href="/app/login" class="btn btn-primary">Telecharger l'app <span class="arrow">→</span></a>
+      </div>
+      <button class="menu-btn" id="menuBtn">Menu</button>
     </div>
+    <div class="mobile-menu" id="mobileMenu">
+      <a href="#fonctionnalites">Fonctionnalites</a>
+      <a href="#entreprises">Entreprises</a>
+      <a href="#livreurs">Livreurs</a>
+      <a href="#apropos">A propos</a>
+      <a href="/app/login">Se connecter</a>
+      <a href="/app/login">Telecharger l'app</a>
+    </div>
+  </header>
 
-    <script>
-        let ws = null;
+  <main id="top">
+    <section class="hero">
+      <div class="container hero-layout">
+        <div class="hero-left">
+          <div class="trust-badge reveal"><span class="dot"></span> 🇲🇦 N°1 au Maroc · Casablanca, Rabat, Fes</div>
+          <h1 class="reveal">Tout ce dont vous avez besoin,<br><span class="headline-soft">livre en <span class="hero-accent">moins de 30 min.</span></span></h1>
+          <p class="hero-text reveal">Medicaments, repas, courses - Swift connecte vos clients aux meilleures enseignes de votre ville, automatiquement.</p>
+          <div class="hero-actions reveal">
+            <a href="/app/login" class="btn btn-primary">Commander maintenant <span class="arrow">→</span></a>
+            <a href="#fonctionnalites" class="btn btn-ghost"><span class="play-circle">▶</span> Voir comment ca marche</a>
+          </div>
+          <div class="trust-row reveal">
+            <div><span>✓</span> Gratuit pour les clients</div>
+            <div><span>✓</span> Livraison en 30 min garantie</div>
+            <div><span>✓</span> +50 enseignes partenaires</div>
+          </div>
+          <div class="img-wrap hero-image-wrap reveal">
+            <img src="{% static 'img/hero-swift-delivery-morocco.png' %}" loading="lazy" alt="Livreur Swift souriant, polo et casquette orange, sac isotherme blanc, rue ensoleillee au Maroc" style="width:100%;height:100%;object-fit:cover;display:block;" />
+          </div>
+        </div>
+        <div class="hero-right reveal">
+          <div class="phone-shell">
+            <div class="phone-screen">
+              <div class="phone-map"></div>
+              <div class="eta-card">Ahmed arrive dans 8 min<div class="bar"><span></span></div></div>
+              <div class="driver-row"><span class="driver-avatar"></span>Ahmed K. · 4.9</div>
+            </div>
+          </div>
+          <div class="float-card float-1">✓ Commande confirmee</div>
+          <div class="float-card float-2">⭐ 4.9 Ahmed K.</div>
+          <div class="float-card float-3">🕐 8 min restants</div>
+          <div class="float-card float-4">📦 2,400 livraisons aujourd'hui<small>record battu ↑</small></div>
+        </div>
+      </div>
+    </section>
 
-        function getCookie(name) {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop().split(';').shift();
-            return '';
+    <section class="section problem" id="apropos">
+      <div class="container">
+        <span class="section-label reveal">Probleme</span>
+        <h2 class="reveal">Vous en avez assez de...<br><span class="headline-soft">retards et commandes sans visibilite</span></h2>
+        <div class="pain-grid">
+          <article class="pain-card card reveal"><div class="icon">😤</div>Attendre 1h votre commande sans aucune info</article>
+          <article class="pain-card card reveal"><div class="icon">📱</div>Appeler 5 fois pour savoir ou est votre livreur</article>
+          <article class="pain-card card reveal"><div class="icon">❌</div>Recevoir la mauvaise commande, encore une fois</article>
+        </div>
+        <p class="bridge reveal">Swift a ete concu pour resoudre exactement ces problemes.</p>
+      </div>
+    </section>
+
+    <section class="section solution" id="fonctionnalites">
+      <div class="container solution-layout">
+        <div>
+          <span class="section-label reveal">La solution</span>
+          <h2 class="reveal">Une plateforme. Trois acteurs.<br><span class="headline-soft"><span class="headline-key">Zero friction.</span></span></h2>
+          <p class="reveal">Swift orchestre chaque livraison de bout en bout grace a un moteur intelligent qui connecte clients, livreurs et entreprises en temps reel.</p>
+          <article class="role-card card reveal"><h4>🛍️ CLIENT</h4><small>Commander en 2 clics, suivre en direct</small><a href="#">En savoir plus →</a></article>
+          <article class="role-card card reveal" id="livreurs"><h4>🚴 LIVREUR</h4><small>Accepter, livrer, gagner - tout depuis l'app</small><a href="#">En savoir plus →</a></article>
+          <article class="role-card card reveal"><h4>⚙️ ADMIN</h4><small>Superviser tout depuis un tableau de bord</small><a href="#">En savoir plus →</a></article>
+        </div>
+        <div>
+          <div class="solution-grid reveal">
+            <div class="img-wrap sol-tall" style="min-height:420px;">
+              <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=380&h=420&fit=crop&q=85" loading="lazy" alt="Plat marocain premium" style="width:100%;height:100%;object-fit:cover;display:block;" />
+            </div>
+            <div class="img-wrap sol-small" style="height:200px;">
+              <img src="https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=280&h=200&fit=crop&q=85" loading="lazy" alt="Pharmacie et medicaments" style="width:100%;height:100%;object-fit:cover;display:block;" />
+            </div>
+            <div class="img-wrap sol-small" style="height:200px;">
+              <img src="https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=280&h=200&fit=crop&q=85" loading="lazy" alt="Rayons d'epicerie moderne" style="width:100%;height:100%;object-fit:cover;display:block;" />
+            </div>
+            <div class="img-wrap sol-small" style="height:200px;">
+              <img src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=280&h=200&fit=crop&q=85" loading="lazy" alt="Cafe et salon de the" style="width:100%;height:100%;object-fit:cover;display:block;" />
+            </div>
+          </div>
+          <div class="img-wrap solution-mobile-img">
+            <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=380&h=420&fit=crop&q=85" loading="lazy" alt="Plat marocain premium" style="width:100%;height:100%;object-fit:cover;display:block;" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section how">
+      <div class="container">
+        <span class="section-label reveal">Desir</span>
+        <h2 class="reveal">Livre en 4 etapes simples<br><span class="headline-soft">de la selection a la livraison</span></h2>
+        <div class="steps">
+          <article class="step-card card reveal">
+            <div class="step-image img-wrap" style="height:180px;"><img src="https://images.unsplash.com/photo-1616348436168-de43ad0db179?w=300&h=180&fit=crop&q=85" loading="lazy" alt="Commander via application mobile" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>
+            <div class="step-badge">01</div><h3>Choisissez</h3><p>Selectionnez vos produits en quelques secondes.</p>
+          </article>
+          <article class="step-card card reveal">
+            <div class="step-image img-wrap" style="height:180px;"><img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=300&h=180&fit=crop&q=85" loading="lazy" alt="Paiement sans contact sur mobile" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>
+            <div class="step-badge">02</div><h3>Commandez</h3><p>Paiement fluide et confirmation immediate.</p>
+          </article>
+          <article class="step-card card reveal">
+            <div class="step-image img-wrap" style="height:180px;"><img src="https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?w=300&h=180&fit=crop&q=85" loading="lazy" alt="Livreur a velo avec sac de livraison" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>
+            <div class="step-badge">03</div><h3>On s'occupe du reste</h3><p>Dispatch auto et suivi live des livreurs.</p>
+          </article>
+          <article class="step-card card reveal">
+            <div class="step-image img-wrap" style="height:180px;"><img src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=300&h=180&fit=crop&q=85" loading="lazy" alt="Livraison de colis a la porte" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>
+            <div class="step-badge">04</div><h3>Recevez a votre porte</h3><p>Livraison rapide, precise et securisee.</p>
+          </article>
+        </div>
+        <div class="quote-box reveal">"De la commande a la livraison: moins de 30 minutes, garanti."<span>- L'equipe Swift</span></div>
+      </div>
+    </section>
+
+    <section class="section proof">
+      <div class="container">
+        <div class="stats">
+          <div class="stat reveal"><div class="stat-value" data-count="50" data-suffix="+">0</div><p>Enseignes partenaires</p></div>
+          <div class="stat reveal"><div class="stat-value" data-count="2400">0</div><p>Commandes par jour</p></div>
+          <div class="stat reveal"><div class="stat-value" data-count="98" data-suffix="%">0</div><p>Clients satisfaits</p></div>
+          <div class="stat reveal"><div class="stat-value" data-count="12" data-prefix="< ">0</div><p>Delai moyen</p></div>
+        </div>
+        <div class="testimonials-wrap" id="testimonialWrap">
+          <div class="testimonials-track" id="testimonialTrack">
+            <article class="testimonial card reveal">
+              <p>Je recois mes medicaments en 20 min. Incroyable.</p>
+              <div class="meta">
+                <div class="avatar-wrap"><img src="https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=56&h=56&fit=crop&q=80" loading="lazy" alt="Portrait de Fatima" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid #FFE8DF;flex-shrink:0;display:block;" /></div>
+                <div><strong>Fatima B., Casablanca</strong><br><span class="stars">★★★★★</span></div>
+              </div>
+            </article>
+            <article class="testimonial card reveal">
+              <p>En tant que livreur, je gere tout depuis l'app. Mes revenus ont double.</p>
+              <div class="meta">
+                <div class="avatar-wrap"><img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=56&h=56&fit=crop&q=80" loading="lazy" alt="Portrait de Youssef" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid #FFE8DF;flex-shrink:0;display:block;" /></div>
+                <div><strong>Youssef M., Livreur Swift</strong><br><span class="stars">★★★★★</span></div>
+              </div>
+            </article>
+            <article class="testimonial card reveal">
+              <p>Notre restaurant a vu +40% de commandes depuis qu'on a rejoint Swift.</p>
+              <div class="meta">
+                <div class="avatar-wrap"><img src="https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=56&h=56&fit=crop&q=80" loading="lazy" alt="Portrait d'un chef partenaire" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid #FFE8DF;flex-shrink:0;display:block;" /></div>
+                <div><strong>Restaurant Al Baraka, Fes</strong><br><span class="stars">★★★★★</span></div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section features">
+      <div class="container features-layout">
+        <div class="feature-visual card reveal">
+          <span class="section-label">Technologie Swift</span>
+          <div class="tracker-ui">
+            <div class="track-row"><span class="circle-icon">✓</span><span>Commande recue</span><span class="badge-ok">Valide</span></div>
+            <div class="track-row"><span class="circle-icon">✓</span><span>Livreur assigne</span><span class="badge-ok">Actif</span></div>
+            <div class="track-row"><span class="circle-icon"><span class="pulse-dot"></span></span><span>En route...</span><span class="badge-live">Live</span></div>
+          </div>
+        </div>
+        <div class="feature-tabs">
+          <article class="feature-tab card active reveal"><h4>🤖 Dispatch automatique</h4><p>Le bon livreur, au bon endroit, au bon moment. Aucune intervention humaine.</p></article>
+          <article class="feature-tab card reveal"><h4>📡 Tracking WebSocket</h4><p>Position GPS mise a jour toutes les 3 secondes. Votre client sait toujours ou vous etes.</p></article>
+          <article class="feature-tab card reveal"><h4>🏢 Multi-entreprises</h4><p>Gerez pharmacies, restaurants et epiceries depuis une seule interface.</p></article>
+          <article class="feature-tab card reveal"><h4>🔔 Notifications intelligentes</h4><p>Chaque acteur recoit les bonnes alertes au bon moment.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section business" id="entreprises">
+      <div class="container business-layout">
+        <div>
+          <span class="section-label reveal">Pour les entreprises</span>
+          <h2 class="reveal">Augmentez vos ventes de 40%<br><span class="headline-soft">en rejoignant <span class="headline-key">Swift</span></span></h2>
+          <div class="benefit-list">
+            <p class="benefit reveal"><svg class="check-svg" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>Zero frais d'installation</p>
+            <p class="benefit reveal"><svg class="check-svg" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>Tableau de bord en temps reel</p>
+            <p class="benefit reveal"><svg class="check-svg" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>Livreurs deja disponibles dans votre zone</p>
+            <p class="benefit reveal"><svg class="check-svg" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>Support dedie 7j/7</p>
+          </div>
+          <a href="/app/login" class="btn btn-primary reveal">Inscrire mon entreprise <span class="arrow">→</span></a>
+          <div class="img-wrap b2b-image-wrap reveal" style="height:440px;">
+            <img src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=560&h=440&fit=crop&q=85" loading="lazy" alt="Proprietaire de restaurant souriant" style="width:100%;height:100%;object-fit:cover;display:block;" />
+          </div>
+        </div>
+        <aside class="pricing card reveal">
+          <div class="popular">Le plus populaire</div>
+          <span class="section-label">Offre Pro Swift</span>
+          <h3>Commission par livraison uniquement</h3>
+          <p style="font-size:46px;font-weight:800;color:#FF6B35;margin:0 0 8px;">0 MAD</p>
+          <p style="margin:0 0 12px;font-weight:700;color:#1A0A00;">Frais d'installation</p>
+          <ul>
+            <li>Activation en moins de 24h</li>
+            <li>Suivi live de chaque commande</li>
+            <li>Rapports de performance hebdomadaires</li>
+            <li>Support prioritaire dedie</li>
+          </ul>
+          <a href="/app/login" class="btn btn-primary">Demarrer avec Swift <span class="arrow">→</span></a>
+        </aside>
+      </div>
+    </section>
+
+    <section class="final-cta">
+      <span class="orb orb-1"></span>
+      <span class="orb orb-2"></span>
+      <span class="orb orb-3"></span>
+      <div class="container reveal">
+        <h2>Votre premiere livraison est a 1 clic.</h2>
+        <p>Rejoignez +2000 clients qui font deja confiance a Swift.</p>
+        <a href="/app/login" class="btn btn-cta-main">Creer mon compte gratuitement <span class="arrow">→</span></a>
+        <p style="margin-top:14px;font-size:14px;">🔒 Donnees securisees  |  ✓ Sans engagement  |  🇲🇦 100% Marocain</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <a href="#top" class="logo" style="color:#fff;"><span class="logo-dot"></span>Swift</a>
+          <p>La livraison multi-service intelligente pour les villes marocaines.</p>
+          <div class="socials"><a href="#" aria-label="Instagram">IG</a><a href="#" aria-label="LinkedIn">IN</a><a href="#" aria-label="WhatsApp">WA</a></div>
+        </div>
+        <div class="footer-col">
+          <h4>Produit</h4>
+          <a href="#fonctionnalites">Fonctionnalites</a>
+          <a href="/app/login">Telecharger</a>
+          <a href="#">API</a>
+        </div>
+        <div class="footer-col">
+          <h4>Entreprises</h4>
+          <a href="#entreprises">Rejoindre</a>
+          <a href="#">Tarifs</a>
+          <a href="#">Support</a>
+        </div>
+        <div class="footer-col">
+          <h4>Contact</h4>
+          <p>Email: hello@swift.ma</p>
+          <p>Phone: +212 5 22 00 00 00</p>
+          <p>Adresse: Casablanca, Maroc</p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 Swift Maroc. Tous droits reserves.</span>
+        <span>Mentions legales · Confidentialite · Conditions</span>
+      </div>
+    </div>
+  </footer>
+
+  <div class="mobile-sticky-cta">
+    <a href="/app/login" class="btn btn-primary">Commander maintenant <span class="arrow">→</span></a>
+  </div>
+
+  <script>
+    const navbar = document.getElementById("navbar");
+    const menuBtn = document.getElementById("menuBtn");
+    const mobileMenu = document.getElementById("mobileMenu");
+    window.addEventListener("scroll", () => navbar.classList.toggle("scrolled", window.scrollY > 8));
+    menuBtn.addEventListener("click", () => mobileMenu.classList.toggle("open"));
+    mobileMenu.querySelectorAll("a").forEach((link) => link.addEventListener("click", () => mobileMenu.classList.remove("open")));
+    window.addEventListener("load", () => document.body.classList.add("is-ready"));
+
+    const revealObserver = new IntersectionObserver((entries, obs) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          obs.unobserve(entry.target);
         }
+      });
+    }, { threshold: 0.15 });
+    document.querySelectorAll(".reveal").forEach((el) => revealObserver.observe(el));
 
-        const csrfToken = () => getCookie('csrftoken');
-
-        async function apiRequest(url, method = 'GET', body = null) {
-            const options = {
-                method,
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() }
-            };
-            if (body) options.body = JSON.stringify(body);
-            const res = await fetch(url, options);
-            let data = {};
-            try { data = await res.json(); } catch (e) { data = { detail: 'No JSON response' }; }
-            return { ok: res.ok, status: res.status, data };
+    function easeOutExpo(t) {
+      return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+    }
+    const stats = document.querySelectorAll(".stat-value");
+    const statsObserver = new IntersectionObserver((entries, obs) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const el = entry.target;
+        const target = Number(el.dataset.count || 0);
+        const prefix = el.dataset.prefix || "";
+        const suffix = el.dataset.suffix || "";
+        const start = performance.now();
+        const duration = 2500;
+        function animate(now) {
+          const progress = Math.min((now - start) / duration, 1);
+          const eased = easeOutExpo(progress);
+          const value = Math.round(target * eased);
+          el.textContent = `${prefix}${value.toLocaleString("fr-FR")}${suffix}`;
+          if (progress < 1) requestAnimationFrame(animate);
         }
+        requestAnimationFrame(animate);
+        obs.unobserve(el);
+      });
+    }, { threshold: 0.4 });
+    stats.forEach((s) => statsObserver.observe(s));
 
-        function write(id, data) {
-            document.getElementById(id).textContent = JSON.stringify(data, null, 2);
+    const checkObserver = new IntersectionObserver((entries, obs) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.querySelector(".check-svg")?.classList.add("draw");
+          obs.unobserve(entry.target);
         }
+      });
+    }, { threshold: 0.3 });
+    document.querySelectorAll(".benefit").forEach((b) => checkObserver.observe(b));
 
-        async function loginUser() {
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            const result = await apiRequest('/login', 'POST', { username, password });
-            const el = document.getElementById('authStatus');
-            if (result.ok) {
-                el.textContent = `Connecte: ${result.data.username} (${result.data.role})`;
-                el.className = 'status good';
-            } else {
-                el.textContent = `Erreur ${result.status}: ${result.data.detail || 'login failed'}`;
-                el.className = 'status bad';
-            }
-        }
-
-        async function logoutUser() {
-            const result = await apiRequest('/logout', 'POST');
-            const el = document.getElementById('authStatus');
-            el.textContent = result.ok ? 'Deconnecte' : `Erreur ${result.status}`;
-            el.className = result.ok ? 'status' : 'status bad';
-        }
-
-        async function loadProducts() {
-            const branch = document.getElementById('productsBranchId').value.trim();
-            const qs = branch ? `?branch=${encodeURIComponent(branch)}` : '';
-            const result = await apiRequest(`/products${qs}`);
-            write('productsOutput', result.data);
-        }
-
-        async function createOrder() {
-            const branch_id = Number(document.getElementById('orderBranchId').value);
-            const client_lat = parseFloat(document.getElementById('clientLat').value);
-            const client_lng = parseFloat(document.getElementById('clientLng').value);
-            let items = [];
-            try {
-                items = JSON.parse(document.getElementById('orderItems').value);
-            } catch (e) {
-                write('createOrderOutput', { error: 'JSON items invalide' });
-                return;
-            }
-            const payload = { branch_id, items };
-            if (!Number.isNaN(client_lat)) payload.client_lat = client_lat;
-            if (!Number.isNaN(client_lng)) payload.client_lng = client_lng;
-            const result = await apiRequest('/order/create', 'POST', payload);
-            write('createOrderOutput', result.data);
-        }
-
-        async function trackOrder() {
-            const id = document.getElementById('trackOrderId').value.trim();
-            const result = await apiRequest(`/order/track/${id}`);
-            write('trackOrderOutput', result.data);
-        }
-
-        async function loadDriverOrders() {
-            const result = await apiRequest('/driver/orders');
-            write('driverOutput', result.data);
-        }
-
-        async function driverAccept() {
-            const delivery_id = Number(document.getElementById('deliveryId').value);
-            const result = await apiRequest('/driver/accept', 'POST', { delivery_id });
-            write('driverOutput', result.data);
-        }
-
-        async function driverReject() {
-            const delivery_id = Number(document.getElementById('deliveryId').value);
-            const result = await apiRequest('/driver/reject', 'POST', { delivery_id });
-            write('driverOutput', result.data);
-        }
-
-        async function updateLocation() {
-            const delivery_id = Number(document.getElementById('deliveryId').value);
-            const lat = parseFloat(document.getElementById('deliveryLat').value);
-            const lng = parseFloat(document.getElementById('deliveryLng').value);
-            const result = await apiRequest('/driver/update-location', 'POST', { delivery_id, lat, lng });
-            write('driverOutput', result.data);
-        }
-
-        async function completeDelivery() {
-            const delivery_id = Number(document.getElementById('deliveryId').value);
-            const result = await apiRequest('/driver/complete', 'POST', { delivery_id });
-            write('driverOutput', result.data);
-        }
-
-        function connectWS() {
-            const deliveryId = document.getElementById('wsDeliveryId').value.trim();
-            if (!deliveryId) return;
-            disconnectWS();
-            const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-            ws = new WebSocket(`${protocol}://${window.location.host}/ws/tracking/${deliveryId}/`);
-            const status = document.getElementById('wsStatus');
-
-            ws.onopen = () => {
-                status.textContent = `WebSocket connecte sur delivery ${deliveryId}`;
-                status.className = 'status good';
-            };
-            ws.onmessage = (event) => {
-                const box = document.getElementById('wsOutput');
-                let arr = [];
-                try { arr = JSON.parse(box.textContent); } catch (e) { arr = []; }
-                try { arr.unshift(JSON.parse(event.data)); } catch (e) { arr.unshift({ raw: event.data }); }
-                box.textContent = JSON.stringify(arr.slice(0, 40), null, 2);
-            };
-            ws.onclose = () => {
-                status.textContent = 'WebSocket ferme';
-                status.className = 'status';
-            };
-            ws.onerror = () => {
-                status.textContent = 'Erreur WebSocket';
-                status.className = 'status bad';
-            };
-        }
-
-        function disconnectWS() {
-            if (ws) {
-                ws.close();
-                ws = null;
-            }
-        }
-    </script>
+    const track = document.getElementById("testimonialTrack");
+    const cards = Array.from(track.children);
+    let index = 0;
+    function slideTestimonials() {
+      if (window.innerWidth < 768) return;
+      const step = window.innerWidth < 1025 ? 50 : 33.333;
+      const max = window.innerWidth < 1025 ? cards.length - 2 : 0;
+      index = max === 0 ? 0 : index >= max ? 0 : index + 1;
+      track.style.transform = `translateX(-${index * step}%)`;
+    }
+    setInterval(slideTestimonials, 3500);
+  </script>
 </body>
 </html>
