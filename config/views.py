@@ -4,7 +4,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 
 @ensure_csrf_cookie
 def frontend_home(request):
-    return render(request, 'index.html')
+    return render(request, 'swift_demo.html')
 
 
 def swift_demo(request):
