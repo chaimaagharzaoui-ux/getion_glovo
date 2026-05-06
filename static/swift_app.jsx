@@ -68,22 +68,25 @@ function Btn({ children, onClick, variant = "primary", size = "md", full, style,
   );
 }
 
-function Input({ label, type = "text", value, onChange, icon, placeholder, light, multiline, rows = 3 }) {
-  const bg = light ? COLORS.white : COLORS.cardDark;
-  const color = light ? COLORS.black : COLORS.textDark;
-  const border = light ? COLORS.border : COLORS.borderDark;
-  const ph = light ? COLORS.muted : COLORS.textMuted;
+function Input({ label, type = "text", onCommit, icon, placeholder, dark = true, initialValue = "", multiline, rows = 3, value }) {
+  const [val, setVal] = useState(value ?? initialValue);
+  useEffect(() => {
+    if (value !== undefined) setVal(value);
+  }, [value]);
+  const bg = dark ? "#18181F" : "#F8F8F8";
+  const color = dark ? "#F0F0FA" : "#0D0D0D";
+  const border = dark ? "#26263A" : "#EBEBEB";
   return (
-    <div style={{ marginBottom: 14 }}>
-      {label && <div style={{ ...RF, color: light ? COLORS.black : COLORS.textMuted, fontSize: 11, marginBottom: 6, fontWeight: 600 }}>{label}</div>}
+    <div style={{ marginBottom: 16 }}>
+      {label && <div style={{ ...RF, color: dark ? "#7777A0" : "#888", fontSize: 13, marginBottom: 6, fontWeight: 600 }}>{label}</div>}
       <div style={{ position: "relative" }}>
-        {icon && <span style={{ position: "absolute", left: 12, top: multiline ? 12 : 13, fontSize: 16 }}>{icon}</span>}
+        {icon && <span style={{ position: "absolute", left: 14, top: multiline ? 12 : "50%", transform: multiline ? "none" : "translateY(-50%)", fontSize: 16 }}>{icon}</span>}
         {multiline ? (
-          <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={rows}
-            style={{ ...RF, width: "100%", background: bg, color, border: `1px solid ${border}`, borderRadius: 12, padding: `12px 12px 12px ${icon ? 38 : 12}px`, outline: "none", fontSize: 14, resize: "vertical", boxSizing: "border-box", minHeight: 80 }} />
+          <textarea value={val} onChange={(e) => setVal(e.target.value)} onBlur={() => onCommit && onCommit(val)} placeholder={placeholder} rows={rows}
+            style={{ ...RF, width: "100%", background: bg, color, border: `1.5px solid ${border}`, borderRadius: 12, padding: `13px 14px 13px ${icon ? 44 : 14}px`, outline: "none", fontSize: 14, resize: "vertical", boxSizing: "border-box", minHeight: 80 }} />
         ) : (
-          <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-            style={{ ...RF, width: "100%", background: bg, color, border: `1px solid ${border}`, borderRadius: 12, padding: `12px 12px 12px ${icon ? 38 : 12}px`, outline: "none", fontSize: 14, boxSizing: "border-box" }} />
+          <input type={type} value={val} onChange={(e) => setVal(e.target.value)} onBlur={() => onCommit && onCommit(val)} placeholder={placeholder}
+            style={{ ...RF, width: "100%", background: bg, color, border: `1.5px solid ${border}`, borderRadius: 12, padding: `13px 14px 13px ${icon ? 44 : 14}px`, outline: "none", fontSize: 14, boxSizing: "border-box" }} />
         )}
       </div>
     </div>
@@ -287,7 +290,17 @@ function SwiftMobileApp() {
 
 /* ═══════════════ CLIENT APP ═══════════════ */
 function ClientAppPlatform({ orders, setOrders }) {
-  const [screen, setScreen] = useState("landing");
+  const getInitialScreen = () => {
+    const hash = window.location.hash.replace("#", "");
+    const validScreens = [
+      "landing", "login", "register", "forgot",
+      "dashboard", "catalogue", "cart", "checkout",
+      "tracking", "history", "profile",
+      "livreur_dashboard", "enterprise_dashboard", "admin_dashboard",
+    ];
+    return validScreens.includes(hash) ? hash : "landing";
+  };
+  const [screen, setScreen] = useState(getInitialScreen);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [regStep, setRegStep] = useState(1);
   const [forgotSent, setForgotSent] = useState(false);
@@ -297,6 +310,7 @@ function ClientAppPlatform({ orders, setOrders }) {
   const [checkoutOk, setCheckoutOk] = useState(false);
   const [trackStep, setTrackStep] = useState(0);
   const [catF, setCatF] = useState(null);
+  const [search, setSearch] = useState("");
   const [priceF, setPriceF] = useState("All");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
@@ -308,7 +322,10 @@ function ClientAppPlatform({ orders, setOrders }) {
   const [actor, setActor] = useState(0);
   const [profNotif, setProfNotif] = useState({ cmd: true, promo: false, news: true });
   const [authErr, setAuthErr] = useState("");
-  const go = (s) => setScreen(s);
+  const go = (s) => {
+    setScreen(s);
+    window.location.hash = s;
+  };
 
   useEffect(() => { const t = setTimeout(() => setLandFade(1), 80); return () => clearTimeout(t); }, []);
   useEffect(() => {
@@ -335,10 +352,41 @@ function ClientAppPlatform({ orders, setOrders }) {
     const protectedScreens = ["dashboard", "catalogue", "cart", "checkout", "tracking", "history", "profile"];
     if (protectedScreens.includes(screen) && !isAuthenticated) go("login");
   }, [screen, isAuthenticated]);
+  useEffect(() => {
+    if (screen !== "history" || !isAuthenticated) return;
+    api("/orders/my")
+      .then((rows) => {
+        const mapped = (rows || []).map((o) => ({
+          id: `#${String(o.id).padStart(4, "0")}`,
+          entreprise: o.branch_name || "Entreprise",
+          date: o.created_at ? new Date(o.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "",
+          articles: (o.items || []).map((it) => ({ name: it.product_name || `Produit ${it.product}`, qty: it.quantity || 1 })),
+          total: o.total_price || 0,
+          statut: "Livré",
+        }));
+        setOrders(mapped);
+      })
+      .catch(() => {});
+  }, [screen, isAuthenticated, setOrders]);
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace("#", "");
+      const validScreens = [
+        "landing", "login", "register", "forgot",
+        "dashboard", "catalogue", "cart", "checkout",
+        "tracking", "history", "profile",
+        "livreur_dashboard", "enterprise_dashboard", "admin_dashboard",
+      ];
+      if (validScreens.includes(hash)) setScreen(hash);
+      else setScreen("landing");
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
 
   const cartN = cart.reduce((a, i) => a + i.qty, 0);
   const subtotal = cart.reduce((a, i) => a + i.price * i.qty, 0);
-  const livBiz = useMemo(() => BUSINESSES.filter((b) => !catF || b.cat === catF), [catF]);
+  const livBiz = useMemo(() => BUSINESSES.filter((b) => (!catF || b.cat === catF) && b.name.toLowerCase().includes(search.toLowerCase())), [catF, search]);
   const filtProd = useMemo(() => PRODUCTS.filter((p) => priceF === "All" || (priceF === "<5" && p.price < 5) || (priceF === "5-10" && p.price >= 5 && p.price <= 10) || (priceF === ">10" && p.price > 10)), [priceF]);
   const inCart = (id) => cart.some((c) => c.id === id);
   const addCart = (p) => setCart((prev) => prev.find((x) => x.id === p.id) ? prev.map((x) => (x.id === p.id ? { ...x, qty: x.qty + 1 } : x)) : [...prev, { ...p, qty: 1 }]);
@@ -424,6 +472,30 @@ function ClientAppPlatform({ orders, setOrders }) {
       </div>
     </aside>
   );
+
+  function SearchBar({ search, setSearch, activeCat }) {
+    const [focused, setFocused] = useState(false);
+    const suggestions = ["Burger Palace", "Pizza Roma", "Sushi Zen", "PharmaCare", "Nike Store", "Sephora", "Zara"];
+    const filtered = search.length > 0 ? suggestions.filter((s) => s.toLowerCase().includes(search.toLowerCase())) : [];
+    return (
+      <div style={{ position: "relative", width: 400 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#F8F8F8", border: `1.5px solid ${focused ? "#FF6B00" : "#EBEBEB"}`, borderRadius: focused && filtered.length > 0 ? "16px 16px 0 0" : 50, padding: "0 16px", transition: "border-color 0.2s", boxShadow: focused ? "0 0 0 3px rgba(255,107,0,0.1)" : "none" }}>
+          <span style={{ fontSize: 16, opacity: 0.6 }}>🔍</span>
+          <input value={search} onChange={(e) => setSearch(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setTimeout(() => setFocused(false), 150)} placeholder={activeCat ? `Rechercher dans ${activeCat}...` : "Restaurant, produit, catégorie..."} style={{ flex: 1, background: "none", border: "none", outline: "none", color: "#0D0D0D", fontSize: 14, fontFamily: "'Outfit', sans-serif", padding: "13px 0" }} />
+          {search.length > 0 && <span onClick={() => setSearch("")} style={{ fontSize: 16, cursor: "pointer", opacity: 0.5, userSelect: "none" }}>✕</span>}
+        </div>
+        {focused && filtered.length > 0 && (
+          <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#FFFFFF", border: "1.5px solid #FF6B00", borderTop: "none", borderRadius: "0 0 16px 16px", zIndex: 100, overflow: "hidden" }}>
+            {filtered.map((s, i) => (
+              <div key={i} onMouseDown={() => setSearch(s)} style={{ padding: "11px 16px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", borderTop: i > 0 ? "1px solid #EBEBEB" : "none", color: "#0D0D0D", fontSize: 14, fontWeight: 500 }}>
+                <span style={{ opacity: 0.5 }}>🔍</span>{s}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const Landing = () => {
     const roleCards = [
@@ -584,8 +656,8 @@ function ClientAppPlatform({ orders, setOrders }) {
       <div style={{ textAlign: "center", fontSize: 40 }}>🔐</div>
       <h1 style={{ ...RF, color: COLORS.textDark, fontWeight: 900, fontSize: 26, textAlign: "center" }}>Bon retour !</h1>
       <p style={{ textAlign: "center", color: COLORS.textMuted, fontSize: 14 }}>Connectez-vous à Swift</p>
-      <Input icon="✉️" placeholder="Email" value={email} onChange={setEmail} />
-      <Input icon="🔒" type="password" placeholder="Mot de passe" value={pass} onChange={setPass} />
+      <Input icon="✉️" placeholder="Email" value={email} onCommit={setEmail} dark={false} />
+      <Input icon="🔒" type="password" placeholder="Mot de passe" value={pass} onCommit={setPass} dark={false} />
       {authErr && <div style={{ color: COLORS.red, fontSize: 12, marginBottom: 8 }}>{authErr}</div>}
       <div style={{ textAlign: "right", marginBottom: 12 }}><button type="button" onClick={() => go("forgot")} style={{ ...RF, border: "none", background: "none", color: COLORS.primary, cursor: "pointer", fontWeight: 700 }}>Mot de passe oublié ?</button></div>
       <Btn full onClick={async () => {
@@ -609,12 +681,12 @@ function ClientAppPlatform({ orders, setOrders }) {
       <div style={{ display: "flex", gap: 6, marginBottom: 20 }}><div style={{ flex: 1, height: 4, borderRadius: 4, background: COLORS.primary }} /><div style={{ flex: 1, height: 4, borderRadius: 4, background: regStep === 2 ? COLORS.primary : COLORS.borderDark }} /></div>
       {regStep === 1 ? <>
         <h1 style={{ color: COLORS.textDark, fontWeight: 900, fontSize: 24 }}>Créer un compte</h1>
-        <Input icon="👤" placeholder="Nom complet" value={name} onChange={setName} />
-        <Input icon="✉️" placeholder="Email" value={email} onChange={setEmail} />
+        <Input icon="👤" placeholder="Nom complet" value={name} onCommit={setName} dark={false} />
+        <Input icon="✉️" placeholder="Email" value={email} onCommit={setEmail} dark={false} />
         <Btn full onClick={() => name && email && setRegStep(2)}>Continuer →</Btn>
       </> : <>
         <h1 style={{ color: COLORS.textDark, fontWeight: 900, fontSize: 24 }}>Sécuriser le compte</h1>
-        <Input icon="🔒" type="password" placeholder="Mot de passe" value={pass} onChange={setPass} />
+        <Input icon="🔒" type="password" placeholder="Mot de passe" value={pass} onCommit={setPass} dark={false} />
         <Btn full onClick={async () => {
           try {
             setAuthErr("");
@@ -636,7 +708,7 @@ function ClientAppPlatform({ orders, setOrders }) {
     <AuthCard>
       {!forgotSent ? <>
         <h1 style={{ color: COLORS.textDark, fontWeight: 900 }}>Mot de passe oublié</h1>
-        <Input icon="✉️" value={email} onChange={setEmail} placeholder="Email" />
+        <Input icon="✉️" value={email} onCommit={setEmail} placeholder="Email" dark={false} />
         <Btn full onClick={() => setForgotSent(true)}>Envoyer le lien</Btn>
       </> : <>
         <div style={{ textAlign: "center", fontSize: 56 }}>📬</div>
@@ -665,7 +737,7 @@ function ClientAppPlatform({ orders, setOrders }) {
     <div style={{ padding: 28 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div><div style={{ color: COLORS.textMuted, fontSize: 14 }}>Bonjour 👋</div><div style={{ fontSize: 28, fontWeight: 900, color: COLORS.textDark }}>Que souhaitez-vous ?</div></div>
-        <input placeholder="Rechercher…" style={{ ...RF, width: 340, padding: "12px 20px", borderRadius: 50, border: "1px solid #EBEBEB", background: "#F8F8F8", color: "#0D0D0D" }} />
+        <SearchBar search={search} setSearch={setSearch} activeCat={catF ? CAT_CLIENT.find((c) => c.id === catF)?.label : null} />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
         <Card style={{ padding: 20, background: "linear-gradient(135deg,#FF6B00,#FF3500)", border: "none", color: COLORS.white }}><div style={{ fontWeight: 800 }}>Livraison gratuite</div><div style={{ fontSize: 24 }}>🛵</div></Card>
@@ -762,7 +834,7 @@ function ClientAppPlatform({ orders, setOrders }) {
     </div> : <div style={{ padding: 24, display: "grid", gridTemplateColumns: "1fr 380px", gap: 24 }}>
       <div>
         <h1 style={{ color: COLORS.textDark, fontWeight: 900 }}>Finaliser</h1>
-        <Card style={{ padding: 20, marginTop: 16, background: "#FFFFFF" }}><div style={{ fontWeight: 800, marginBottom: 8 }}>🏠 Adresse</div><Input light value={addr} onChange={setAddr} placeholder="Adresse" /></Card>
+        <Card style={{ padding: 20, marginTop: 16, background: "#FFFFFF" }}><div style={{ fontWeight: 800, marginBottom: 8 }}>🏠 Adresse</div><Input value={addr} onCommit={setAddr} placeholder="Adresse" dark={false} /></Card>
         <Card style={{ padding: 20, marginTop: 16, background: "#FFFFFF" }}>
           <div style={{ fontWeight: 800, marginBottom: 8 }}>Paiement</div>
           {[["cash", "💵 Espèces"], ["card", "💳 En ligne"]].map(([k, lab]) => (
@@ -916,7 +988,7 @@ function LivreurAppPlatform({ initialScreen = "login", onBackToLanding }) {
         <div style={{ fontSize: 64, marginTop: 40 }}>🛵</div>
         <h1 style={{ color: COLORS.textDark, fontWeight: 900, fontSize: 26 }}>Livreur Swift</h1>
         <p style={{ color: COLORS.textMuted }}>Connectez-vous pour démarrer</p>
-        <div style={{ width: "100%", marginTop: 24 }}><Input icon="✉️" placeholder="Email" value={lemail} onChange={setLemail} /><Input icon="🔒" type="password" placeholder="Mot de passe" value={lpass} onChange={setLpass} /></div>
+        <div style={{ width: "100%", marginTop: 24 }}><Input icon="✉️" placeholder="Email" value={lemail} onCommit={setLemail} /><Input icon="🔒" type="password" placeholder="Mot de passe" value={lpass} onCommit={setLpass} /></div>
         <Btn full style={{ marginTop: 8 }} onClick={() => setScreen("app")}>Connexion</Btn>
         <button type="button" onClick={() => go("onboard")} style={{ ...RF, marginTop: 16, border: "none", background: "none", color: COLORS.primary, cursor: "pointer" }}>Pas encore livreur ? Rejoindre Swift</button>
       </div>
@@ -929,7 +1001,7 @@ function LivreurAppPlatform({ initialScreen = "login", onBackToLanding }) {
         <ProgressBar pct={(onboardStep / 5) * 100} />
         <h2 style={{ color: COLORS.textDark, fontWeight: 900 }}>Étape {onboardStep}/5</h2>
         {onboardStep === 5 ? <Card dark style={{ padding: 20, marginTop: 16 }}><p>Votre dossier est en cours de validation. Email sous 24h.</p><Btn full onClick={() => go("login")}>OK</Btn></Card> : <>
-          <Input placeholder="Prénom" value="" onChange={() => { }} />
+          <Input placeholder="Prénom" initialValue="" onCommit={() => { }} />
           <Btn full onClick={() => setOnboardStep((s) => s + 1)}>Suivant</Btn>
         </>}
       </div>
@@ -1045,8 +1117,8 @@ function EnterpriseAppPlatform({ initialScreen = "login", onBackToLanding }) {
       <Card style={{ width: "100%", maxWidth: 500, padding: 40 }}>
         <div style={{ textAlign: "center", fontWeight: 800, color: COLORS.primary, letterSpacing: "0.15em", fontSize: 10 }}>ESPACE ENTREPRISE</div>
         <h1 style={{ textAlign: "center", fontWeight: 900 }}>Connexion</h1>
-        <Input light icon="✉️" placeholder="Email" value="" onChange={() => { }} />
-        <Input light icon="🔒" type="password" placeholder="Mot de passe" value="" onChange={() => { }} />
+        <Input dark={false} icon="✉️" placeholder="Email" initialValue="" onCommit={() => { }} />
+        <Input dark={false} icon="🔒" type="password" placeholder="Mot de passe" initialValue="" onCommit={() => { }} />
         <Btn full onClick={() => setScreen("app")}>Connexion</Btn>
         <button type="button" onClick={() => { setObStep(1); setScreen("eob"); }} style={{ ...RF, border: "none", background: "none", color: COLORS.primary, cursor: "pointer", marginTop: 12, width: "100%" }}>Créer mon espace entreprise</button>
       </Card>
@@ -1065,10 +1137,10 @@ function EnterpriseAppPlatform({ initialScreen = "login", onBackToLanding }) {
 
   const Main = () => {
     if (nav === "cmd") return <div style={{ padding: 28 }}><h1 style={{ fontWeight: 900 }}>Commandes</h1><Btn size="sm">Nouvelles</Btn><Card style={{ padding: 16, marginTop: 12 }}>#SW-9821 · Yasmine · <Badge variant="warning">Nouvelle</Badge><div style={{ marginTop: 8 }}><Btn size="sm" variant="success">Accepter</Btn> <Btn size="sm" variant="danger">Refuser</Btn></div></Card></div>;
-    if (nav === "cat") return <div style={{ padding: 28 }}><h1 style={{ fontWeight: 900 }}>Mon catalogue</h1><Btn onClick={() => setOpen(true)}>Ajouter un produit +</Btn><div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginTop: 16 }}>{PRODUCTS.map((p) => <Card key={p.id} style={{ padding: 16 }}><div style={{ fontSize: 32 }}>{p.icon}</div><div style={{ fontWeight: 700 }}>{p.name}</div><div>{eur(p.price)}</div><Toggle on onToggle={() => { }} /></Card>)}</div><Modal open={open} onClose={() => setOpen(false)}><h3>Nouveau produit</h3><Input light placeholder="Nom" value="" onChange={() => { }} /><Btn full onClick={() => setOpen(false)}>Enregistrer</Btn></Modal></div>;
+    if (nav === "cat") return <div style={{ padding: 28 }}><h1 style={{ fontWeight: 900 }}>Mon catalogue</h1><Btn onClick={() => setOpen(true)}>Ajouter un produit +</Btn><div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginTop: 16 }}>{PRODUCTS.map((p) => <Card key={p.id} style={{ padding: 16 }}><div style={{ fontSize: 32 }}>{p.icon}</div><div style={{ fontWeight: 700 }}>{p.name}</div><div>{eur(p.price)}</div><Toggle on onToggle={() => { }} /></Card>)}</div><Modal open={open} onClose={() => setOpen(false)}><h3>Nouveau produit</h3><Input dark={false} placeholder="Nom" initialValue="" onCommit={() => { }} /><Btn full onClick={() => setOpen(false)}>Enregistrer</Btn></Modal></div>;
     if (nav === "stats") return <div style={{ padding: 28 }}><h1 style={{ fontWeight: 900 }}>Statistiques</h1><div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>{[["Cmd", "124"], ["CA", "18 400 €"], ["Panier moy.", "148 €"], ["Nouv.", "32"]].map(([a, b]) => <StatCard key={a} value={b} label={a} />)}</div><div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 160, marginTop: 24 }}>{[30, 45, 38, 60, 55, 70, 48].map((h, i) => <div key={i} style={{ flex: 1, height: `${h}%`, background: COLORS.primary, borderRadius: 6 }} />)}</div></div>;
     if (nav === "fin") return <div style={{ padding: 28 }}><Card style={{ padding: 24, background: "linear-gradient(135deg,#FF6B00,#FF3500)", border: "none", color: COLORS.white }}><div>Solde disponible</div><div style={{ fontSize: 32, fontWeight: 900 }}>12 450 MAD</div><Btn variant="white">Demander un virement</Btn></Card></div>;
-    if (nav === "param") return <div style={{ padding: 28 }}><h1 style={{ fontWeight: 900 }}>Paramètres</h1><Input light label="Nom du commerce" value="Burger Palace" onChange={() => { }} /></div>;
+    if (nav === "param") return <div style={{ padding: 28 }}><h1 style={{ fontWeight: 900 }}>Paramètres</h1><Input dark={false} label="Nom du commerce" value="Burger Palace" onCommit={() => { }} /></div>;
     if (nav === "sup") return <div style={{ padding: 28 }}><h1 style={{ fontWeight: 900 }}>Support</h1><Card style={{ padding: 16 }}>FAQ — cliquez pour développer</Card></div>;
     return (
       <div style={{ padding: 28, background: COLORS.cream, flex: 1 }}>
@@ -1102,6 +1174,10 @@ function AdminAppPlatform({ initialScreen = "login", onBackToLanding, orders = [
   const [nav, setNav] = useState("dash");
   const [panel, setPanel] = useState(null);
   const [modal, setModal] = useState(null);
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPass, setAdminPass] = useState("");
+  const [serverStats, setServerStats] = useState(null);
+  const [serverOrders, setServerOrders] = useState([]);
   const CLIENTS = MOCK_CLIENTS;
   const LIVREURS = MOCK_LIVREURS;
   const ENTREPRISES = MOCK_ENTREPRISES;
@@ -1115,6 +1191,28 @@ function AdminAppPlatform({ initialScreen = "login", onBackToLanding, orders = [
   const commandesAujourdhui = COMMANDES.filter((c) => c.date === aujourdhui).length;
   const gmvAujourdhui = COMMANDES.reduce((sum, c) => sum + (c.total || 0), 0);
   const commissionPercue = gmvAujourdhui * 0.12;
+  const effectiveStats = serverStats || {
+    total_clients: totalClients,
+    total_orders: COMMANDES.length,
+    pending_orders: 0,
+    in_delivery_orders: 0,
+    completed_orders: COMMANDES.length,
+  };
+  const effectiveOrders = serverOrders.length ? serverOrders : COMMANDES;
+  const loadAdminLiveData = async () => {
+    try {
+      const s = await api("/dashboard");
+      setServerStats(s);
+    } catch (_) {}
+    try {
+      const list = await api("/orders");
+      setServerOrders((list || []).map((o) => ({
+        id: `#${o.id}`,
+        entreprise: o.branch_name || "Entreprise",
+        total: o.total_price || 0,
+      })));
+    } catch (_) {}
+  };
 
   const Side = () => (
     <aside style={{ width: 260, background: COLORS.surfaceDark, borderRight: `1px solid ${COLORS.borderDark}`, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -1157,9 +1255,15 @@ function AdminAppPlatform({ initialScreen = "login", onBackToLanding, orders = [
       <Card dark style={{ width: 420, padding: 32, zIndex: 1 }}>
         <h1 style={{ color: COLORS.textDark, fontWeight: 900, textAlign: "center" }}>⚙️ Admin Swift</h1>
         <Badge variant="warning" style={{ display: "block", textAlign: "center", margin: "12px 0" }}>Accès réservé aux administrateurs</Badge>
-        <Input placeholder="Email admin" value="" onChange={() => { }} />
-        <Input type="password" placeholder="Mot de passe" value="" onChange={() => { }} />
-        <Btn full onClick={() => setScreen("app")}>Connexion sécurisée</Btn>
+        <Input placeholder="Email admin" value={adminEmail} onCommit={setAdminEmail} />
+        <Input type="password" placeholder="Mot de passe" value={adminPass} onCommit={setAdminPass} />
+        <Btn full onClick={async () => {
+          try {
+            await api("/login", { method: "POST", body: JSON.stringify({ username: adminEmail, password: adminPass }) });
+          } catch (_) {}
+          await loadAdminLiveData();
+          setScreen("app");
+        }}>Connexion sécurisée</Btn>
       </Card>
       <Btn size="sm" variant="ghost" style={{ position: "fixed", top: 12, left: 12 }} onClick={() => onBackToLanding && onBackToLanding()}>← Accueil</Btn>
     </div>
@@ -1189,21 +1293,21 @@ function AdminAppPlatform({ initialScreen = "login", onBackToLanding, orders = [
       <div style={{ padding: 28, flex: 1, background: COLORS.bgDark }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}><div style={{ fontWeight: 900, color: COLORS.textDark, fontSize: 20 }}>Vue d'ensemble</div><Badge variant="danger">3 alertes</Badge></div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 12 }}>
-          <StatCard dark value={totalClients} label="Total Clients" />
+          <StatCard dark value={effectiveStats.total_clients ?? totalClients} label="Total Clients" />
           <StatCard dark value={`${livreursActifs}/${totalLivreurs}`} label="Livreurs actifs" />
           <StatCard dark value={totalEntreprises} label="Entreprises" />
           <StatCard dark value={entreprisesActives} label="Entreprises actives" />
-          <StatCard dark value={commandesAujourdhui} label="Commandes aujourd'hui" />
+          <StatCard dark value={effectiveStats.total_orders ?? commandesAujourdhui} label="Commandes aujourd'hui" />
           <StatCard dark value={`${gmvAujourdhui.toFixed(2)} MAD`} label="GMV aujourd'hui" sub={`Commission: ${commissionPercue.toFixed(2)} MAD`} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 20, marginTop: 24 }}>
           <Card dark style={{ padding: 20, height: 240 }}><div style={{ fontWeight: 800, color: COLORS.textDark, marginBottom: 12 }}>Revenus plateforme (30 j.)</div><svg width="100%" height="160" viewBox="0 0 300 120"><polyline fill="none" stroke={COLORS.primary} strokeWidth="2" points="0,100 50,80 100,90 150,40 200,50 250,30 300,20" /></svg></Card>
           <Card dark style={{ padding: 16 }}>
             <div style={{ fontWeight: 800, color: COLORS.textDark }}>Flux commandes</div>
-            {COMMANDES.length === 0 ? (
+            {effectiveOrders.length === 0 ? (
               <div style={{ color: "#7777A0", textAlign: "center", padding: 24, fontSize: 14 }}>Aucune commande pour l'instant</div>
             ) : (
-              COMMANDES.slice(0, 10).map((o) => <div key={o.id} style={{ fontSize: 12, padding: "8px 0", borderBottom: `1px solid ${COLORS.borderDark}` }}><span style={{ color: COLORS.primary }}>{o.id}</span> · {eur(o.total)} · <span style={{ color: COLORS.textMuted }}>{o.entreprise}</span></div>)
+              effectiveOrders.slice(0, 10).map((o) => <div key={o.id} style={{ fontSize: 12, padding: "8px 0", borderBottom: `1px solid ${COLORS.borderDark}` }}><span style={{ color: COLORS.primary }}>{o.id}</span> · {eur(o.total)} · <span style={{ color: COLORS.textMuted }}>{o.entreprise}</span></div>)
             )}
           </Card>
         </div>
