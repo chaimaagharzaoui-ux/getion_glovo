@@ -39,6 +39,12 @@ class AdminOrderListView(generics.ListAPIView):
         if self.request.user.role == 'admin':
             return queryset.order_by('-created_at')
         return queryset.none()
-from django.shortcuts import render
 
-# Create your views here.
+
+class MyOrdersListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = OrderSerializer
+    queryset = Order.objects.select_related('client', 'branch', 'delivery__delivery_user').prefetch_related('items__product')
+
+    def get_queryset(self):
+        return self.queryset.filter(client=self.request.user).order_by('-created_at')

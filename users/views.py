@@ -55,6 +55,19 @@ class LogoutView(APIView):
         return Response({'detail': 'Logged out.'})
 
 
+class CurrentUserView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response(
+            {
+                'id': request.user.id,
+                'username': request.user.username,
+                'role': request.user.role,
+            }
+        )
+
+
 class AdminDashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -63,6 +76,7 @@ class AdminDashboardView(APIView):
             return Response({'detail': 'Admin only.'}, status=403)
         return Response(
             {
+                'total_clients': User.objects.filter(role='client').count(),
                 'total_orders': Order.objects.count(),
                 'pending_orders': Order.objects.filter(status='pending').count(),
                 'in_delivery_orders': Order.objects.filter(status='in_delivery').count(),

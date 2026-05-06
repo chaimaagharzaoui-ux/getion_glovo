@@ -32,6 +32,20 @@ const COLORS = {
 const RF = { fontFamily: "Outfit, sans-serif" };
 const eur = (n) => `${Number(n).toFixed(2)} €`;
 const mad = (n) => `${Number(n).toFixed(0)} MAD`;
+const getCookie = (name) => {
+  const m = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return m ? decodeURIComponent(m[1]) : "";
+};
+const api = async (url, options = {}) => {
+  const method = (options.method || "GET").toUpperCase();
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  if (method !== "GET") headers["X-CSRFToken"] = getCookie("csrftoken");
+  const res = await fetch(url, { credentials: "same-origin", ...options, headers });
+  let data = {};
+  try { data = await res.json(); } catch (_) { data = {}; }
+  if (!res.ok) throw new Error(data.detail || "Erreur API");
+  return data;
+};
 
 /* ——— Shared UI ——— */
 function Btn({ children, onClick, variant = "primary", size = "md", full, style, disabled }) {
@@ -239,38 +253,8 @@ const MOCK_COMMANDES = [
   { id: "SW-9812", client: "Mehdi Benali", ent: "GreenLeaf", liv: "Hassan Oubella", articles: ["Salade"], montant: 45, commission: 5.4, statut: "Livré", cree: "01/05/2026 13:20", livre: "01/05/2026 13:48" },
 ];
 
-function RoleSelector({ onSelect }) {
-  const cards = [
-    { id: "client", icon: "👤", title: "Application Client", desc: "Commander nourriture, pharmacie, courses et suivre les livraisons.", c: COLORS.primaryPale },
-    { id: "livreur", icon: "🛵", title: "Application Livreur", desc: "Accepter les courses, naviguer et encaisser vos gains.", c: COLORS.surfaceDark },
-    { id: "enterprise", icon: "🏪", title: "Espace Entreprise", desc: "Gérer catalogue, commandes et finances de votre commerce.", c: COLORS.cream },
-    { id: "admin", icon: "⚙️", title: "Administration", desc: "Superviser la plateforme, utilisateurs et finances.", c: COLORS.cardDark },
-  ];
-  return (
-    <div style={{ ...RF, minHeight: "100vh", background: `radial-gradient(ellipse at 30% 0%, ${COLORS.primaryGlow}, transparent 50%), ${COLORS.bgDark}`, padding: "48px 24px" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "0.2em", color: COLORS.primary, textTransform: "uppercase" }}>Swift · Plateforme de livraison</div>
-          <h1 style={{ ...RF, fontSize: 42, fontWeight: 900, letterSpacing: "-0.04em", color: COLORS.textDark, margin: "12px 0 8px" }}>Choisissez votre espace</h1>
-          <p style={{ color: COLORS.textMuted, fontSize: 15, maxWidth: 520, margin: "0 auto" }}>Démo développement — quatre interfaces distinctes partageant le même design system.</p>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 20 }}>
-          {cards.map((x) => (
-            <Card key={x.id} dark={x.id !== "enterprise"} style={{ padding: 28, background: x.id === "enterprise" ? COLORS.white : COLORS.cardDark, border: `1px solid ${x.id === "enterprise" ? COLORS.border : COLORS.borderDark}` }}>
-              <div style={{ fontSize: 52, marginBottom: 12 }}>{x.icon}</div>
-              <div style={{ ...RF, fontSize: 20, fontWeight: 900, color: x.id === "enterprise" ? COLORS.black : COLORS.textDark }}>{x.title}</div>
-              <p style={{ ...RF, fontSize: 14, color: x.id === "enterprise" ? COLORS.muted : COLORS.textMuted, lineHeight: 1.7, margin: "10px 0 20px" }}>{x.desc}</p>
-              <Btn full onClick={() => onSelect(x.id)} variant={x.id === "enterprise" ? "primary" : "primary"}>Accéder →</Btn>
-            </Card>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function SwiftMobileApp() {
-  const [role, setRole] = useState(null);
+  const [orders, setOrders] = useState([]);
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -296,18 +280,15 @@ function SwiftMobileApp() {
         .top-nav-link { transition: color .2s, transform .2s; display: inline-block; }
         .top-nav-link:hover { color: ${COLORS.primary}; transform: translateY(-1px); }
       `}</style>
-      {!role && <RoleSelector onSelect={setRole} />}
-      {role === "client" && <ClientAppPlatform onBack={() => setRole(null)} />}
-      {role === "livreur" && <LivreurAppPlatform onBack={() => setRole(null)} />}
-      {role === "enterprise" && <EnterpriseAppPlatform onBack={() => setRole(null)} />}
-      {role === "admin" && <AdminAppPlatform onBack={() => setRole(null)} />}
+      <ClientAppPlatform orders={orders} setOrders={setOrders} />
     </>
   );
 }
 
 /* ═══════════════ CLIENT APP ═══════════════ */
-function ClientAppPlatform({ onBack }) {
+function ClientAppPlatform({ orders, setOrders }) {
   const [screen, setScreen] = useState("landing");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [regStep, setRegStep] = useState(1);
   const [forgotSent, setForgotSent] = useState(false);
   const [user, setUser] = useState(null);
@@ -326,6 +307,7 @@ function ClientAppPlatform({ onBack }) {
   const [landFade, setLandFade] = useState(0);
   const [actor, setActor] = useState(0);
   const [profNotif, setProfNotif] = useState({ cmd: true, promo: false, news: true });
+  const [authErr, setAuthErr] = useState("");
   const go = (s) => setScreen(s);
 
   useEffect(() => { const t = setTimeout(() => setLandFade(1), 80); return () => clearTimeout(t); }, []);
@@ -349,6 +331,10 @@ function ClientAppPlatform({ onBack }) {
     const tm = setTimeout(() => setTrackStep((x) => Math.min(x + 1, 2)), 4000);
     return () => clearTimeout(tm);
   }, [screen, trackStep]);
+  useEffect(() => {
+    const protectedScreens = ["dashboard", "catalogue", "cart", "checkout", "tracking", "history", "profile"];
+    if (protectedScreens.includes(screen) && !isAuthenticated) go("login");
+  }, [screen, isAuthenticated]);
 
   const cartN = cart.reduce((a, i) => a + i.qty, 0);
   const subtotal = cart.reduce((a, i) => a + i.price * i.qty, 0);
@@ -356,12 +342,62 @@ function ClientAppPlatform({ onBack }) {
   const filtProd = useMemo(() => PRODUCTS.filter((p) => priceF === "All" || (priceF === "<5" && p.price < 5) || (priceF === "5-10" && p.price >= 5 && p.price <= 10) || (priceF === ">10" && p.price > 10)), [priceF]);
   const inCart = (id) => cart.some((c) => c.id === id);
   const addCart = (p) => setCart((prev) => prev.find((x) => x.id === p.id) ? prev.map((x) => (x.id === p.id ? { ...x, qty: x.qty + 1 } : x)) : [...prev, { ...p, qty: 1 }]);
+  const produitsRestaurant = [
+    { nom: "Classic Burger", prix: 8.99, image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80" },
+    { nom: "Cheese Fries", prix: 4.99, image: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=300&q=80" },
+    { nom: "Cola Drink", prix: 2.49, image: "https://images.unsplash.com/photo-1581636625402-29b2a704ef13?w=300&q=80" },
+    { nom: "BBQ Chicken", prix: 12.99, image: "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=300&q=80" },
+    { nom: "Onion Rings", prix: 3.99, image: "https://images.unsplash.com/photo-1639024471283-03518883512d?w=300&q=80" },
+    { nom: "Milkshake", prix: 5.49, image: "https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=300&q=80" },
+  ];
+  const produitsPharmacies = [
+    { nom: "Vitamine C 1000mg", prix: 12.50, image: "https://images.unsplash.com/photo-1550572017-edd951aa8f72?w=300&q=80" },
+    { nom: "Doliprane 500mg", prix: 4.20, image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&q=80" },
+    { nom: "Crème Hydratante", prix: 18.90, image: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&q=80" },
+    { nom: "Sérum Visage", prix: 24.99, image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=300&q=80" },
+    { nom: "Masque Purifiant", prix: 9.50, image: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=300&q=80" },
+    { nom: "Eau Micellaire", prix: 7.80, image: "https://images.unsplash.com/photo-1571781565036-d3f759be73e4?w=300&q=80" },
+  ];
+  const produitsEpicerie = [
+    { nom: "Lait Entier 1L", prix: 1.20, image: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&q=80" },
+    { nom: "Pain de Campagne", prix: 2.50, image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=300&q=80" },
+    { nom: "Tomates Bio 1kg", prix: 3.80, image: "https://images.unsplash.com/photo-1546094096-0df4bcaaa337?w=300&q=80" },
+    { nom: "Fromage Gouda", prix: 5.60, image: "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=300&q=80" },
+    { nom: "Jus d'Orange 1L", prix: 2.90, image: "https://images.unsplash.com/photo-1600271772470-bd22a42787b3?w=300&q=80" },
+    { nom: "Yaourt Nature x6", prix: 3.20, image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=300&q=80" },
+  ];
+  const produitsFleurs = [
+    { nom: "Bouquet de Roses Rouges", prix: 29.99, image: "https://images.unsplash.com/photo-1587556930799-8dca6fad6d43?w=300&q=80" },
+    { nom: "Tulipes Colorées", prix: 19.50, image: "https://images.unsplash.com/photo-1490750967868-88df5691cc6f?w=300&q=80" },
+    { nom: "Orchidée Blanche", prix: 34.00, image: "https://images.unsplash.com/photo-1566907225472-514215c03768?w=300&q=80" },
+    { nom: "Lys Blancs", prix: 22.00, image: "https://images.unsplash.com/photo-1518895312237-a9e23508077d?w=300&q=80" },
+    { nom: "Tournesols Frais", prix: 15.90, image: "https://images.unsplash.com/photo-1597848212624-a19eb35e2651?w=300&q=80" },
+    { nom: "Pivoine Rose", prix: 27.50, image: "https://images.unsplash.com/photo-1560717845-968823efbee1?w=300&q=80" },
+  ];
+  const produitsSports = [
+    { nom: "Ballon de Football", prix: 39.99, image: "https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=300&q=80" },
+    { nom: "Raquette de Tennis", prix: 89.00, image: "https://images.unsplash.com/photo-1617083934555-ac7b4d500f7e?w=300&q=80" },
+    { nom: "Gants de Boxe", prix: 49.90, image: "https://images.unsplash.com/photo-1550919247-a2cc49c9c975?w=300&q=80" },
+    { nom: "Tapis de Yoga", prix: 29.00, image: "https://images.unsplash.com/photo-1601925228548-54be0c59e49a?w=300&q=80" },
+    { nom: "Haltères 5kg", prix: 24.99, image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&q=80" },
+    { nom: "Vélo de Fitness", prix: 299.00, image: "https://images.unsplash.com/photo-1561214115-f2f134cc4912?w=300&q=80" },
+  ];
+  const getMenuByCategorie = (categorie) => {
+    switch (categorie) {
+      case "Restaurant": return produitsRestaurant;
+      case "Pharmacie": return produitsPharmacies;
+      case "Épicerie": return produitsEpicerie;
+      case "Fleurs": return produitsFleurs;
+      case "Sports": return produitsSports;
+      default: return produitsRestaurant;
+    }
+  };
 
   const ClientSidebar = () => (
-    <aside style={{ width: 220, flexShrink: 0, background: COLORS.surfaceDark, borderRight: `1px solid ${COLORS.borderDark}`, display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-      <div style={{ padding: 20, borderBottom: `1px solid ${COLORS.borderDark}` }}>
-        <div style={{ ...RF, fontWeight: 900, fontSize: 20, color: COLORS.textDark }}><span style={{ color: COLORS.primary }}>●</span> Swift</div>
-        <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 4 }}>Espace client</div>
+    <aside style={{ width: 220, flexShrink: 0, background: "#FFFFFF", borderRight: "1px solid #EBEBEB", display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <div style={{ padding: 20, borderBottom: "1px solid #EBEBEB" }}>
+        <div style={{ ...RF, fontWeight: 900, fontSize: 20, color: "#0D0D0D" }}><span style={{ color: COLORS.primary }}>●</span> Swift</div>
+        <div style={{ fontSize: 11, color: "#888888", marginTop: 4 }}>Espace client</div>
       </div>
       {[
         ["dashboard", "🏠", "Accueil"],
@@ -371,27 +407,30 @@ function ClientAppPlatform({ onBack }) {
         ["profile", "👤", "Profil"],
       ].map(([sc, ic, lb, badge]) => {
         const active = (sc === "dashboard" && screen === "dashboard" && lb === "Accueil") || (sc === "dashboard" && screen === "dashboard" && lb === "Boutiques") || screen === sc;
-        const nav = () => { if (lb === "Boutiques") { setCatF(null); go("dashboard"); } else go(sc); };
+        const nav = () => {
+          if (!isAuthenticated) { go("login"); return; }
+          if (lb === "Boutiques") { setCatF(null); go("dashboard"); } else go(sc);
+        };
         return (
-          <button key={lb} type="button" onClick={nav} style={{ ...RF, textAlign: "left", margin: "4px 12px", padding: "12px 14px", borderRadius: 12, border: active ? `1px solid ${COLORS.primary}` : "1px solid transparent", background: active ? COLORS.primaryGlow : "transparent", color: active ? COLORS.primary : COLORS.textMuted, fontWeight: active ? 800 : 600, fontSize: 14, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 10, position: "relative" }}>
+          <button key={lb} type="button" onClick={nav} style={{ ...RF, textAlign: "left", margin: "4px 12px", padding: "12px 14px", borderRadius: 12, border: active ? "1px solid #FF6B00" : "1px solid transparent", borderLeft: active ? "3px solid #FF6B00" : "3px solid transparent", background: active ? "#FFF3EA" : "transparent", color: active ? "#FF6B00" : "#555555", fontWeight: active ? 800 : 600, fontSize: 14, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 10, position: "relative" }}>
             <span>{ic}</span>{lb}
             {badge > 0 && <span style={{ marginLeft: "auto", background: COLORS.primary, color: COLORS.white, fontSize: 10, minWidth: 18, height: 18, borderRadius: 9, display: "grid", placeItems: "center" }}>{badge}</span>}
           </button>
         );
       })}
-      <div style={{ marginTop: "auto", padding: 16, borderTop: `1px solid ${COLORS.borderDark}`, display: "flex", alignItems: "center", gap: 10 }}>
-        <Avatar emoji="👤" dark size={40} />
-        <div><div style={{ fontWeight: 700, fontSize: 13, color: COLORS.textDark }}>{user?.name || "Invité"}</div><div style={{ fontSize: 11, color: COLORS.textMuted }}>Casablanca</div></div>
+      <div style={{ marginTop: "auto", padding: 16, borderTop: "1px solid #EBEBEB", display: "flex", alignItems: "center", gap: 10 }}>
+        <Avatar emoji="👤" size={40} />
+        <div><div style={{ fontWeight: 700, fontSize: 13, color: "#0D0D0D" }}>{user?.name || "Invité"}</div><div style={{ fontSize: 11, color: "#888888" }}>Casablanca</div></div>
       </div>
     </aside>
   );
 
   const Landing = () => {
     const roleCards = [
-      { icon: "👤", title: "Client", desc: "Commander et suivre vos livraisons", href: "client.html" },
-      { icon: "🛵", title: "Livreur", desc: "Accepter et livrer les commandes", href: "livreur.html" },
-      { icon: "🏪", title: "Entreprise", desc: "Gérer catalogue et commandes", href: "entreprise.html" },
-      { icon: "⚙️", title: "Admin", desc: "Superviser la plateforme Swift", href: "admin.html" },
+      { icon: "👤", title: "Client", desc: "Commander et suivre vos livraisons", screen: "login" },
+      { icon: "🛵", title: "Livreur", desc: "Accepter et livrer les commandes", screen: "livreur_dashboard" },
+      { icon: "🏪", title: "Entreprise", desc: "Gérer catalogue et commandes", screen: "enterprise_dashboard" },
+      { icon: "⚙️", title: "Admin", desc: "Superviser la plateforme Swift", screen: "admin_dashboard" },
     ];
     return (
     <div style={{ ...RF, opacity: landFade, transition: "opacity 0.5s", background: COLORS.white, minHeight: "100vh" }}>
@@ -474,12 +513,12 @@ function ClientAppPlatform({ onBack }) {
         <h3 style={{ fontSize: 34, fontWeight: 900, letterSpacing: "-0.03em", margin: "8px 0 18px" }}>Accédez à l’interface qui vous correspond</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
           {roleCards.map((r) => (
-            <a key={r.title} href={r.href} className="role-card" style={{ textDecoration: "none", color: COLORS.black, border: `1px solid ${COLORS.border}`, borderRadius: 20, padding: 18, background: "linear-gradient(180deg,#fff,#fff8f3)" }}>
+            <div key={r.title} onClick={() => go(r.screen)} className="role-card" style={{ color: COLORS.black, border: `1px solid ${COLORS.border}`, borderRadius: 20, padding: 18, background: "linear-gradient(180deg,#fff,#fff8f3)", cursor: "pointer" }}>
               <div className="icon-float" style={{ fontSize: 34 }}>{r.icon}</div>
               <div style={{ marginTop: 8, fontWeight: 900, fontSize: 18 }}>{r.title}</div>
               <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 6, lineHeight: 1.55 }}>{r.desc}</div>
               <div style={{ marginTop: 12, color: COLORS.primary, fontWeight: 800 }}>Accéder →</div>
-            </a>
+            </div>
           ))}
         </div>
       </section>
@@ -509,7 +548,7 @@ function ClientAppPlatform({ onBack }) {
         <div><h3 style={{ fontSize: 28, fontWeight: 900 }}>Augmentez vos ventes de <span style={{ color: COLORS.primary }}>40%</span></h3><ul style={{ color: COLORS.muted, lineHeight: 2 }}><li>Zéro frais d'installation</li><li>Tableau de bord temps réel</li><li>Livreurs disponibles</li><li>Support 7j/7</li></ul></div>
         <Card style={{ padding: 24, border: `2px solid ${COLORS.primary}` }}>
           <div style={{ fontSize: 36, fontWeight: 900 }}>0 MAD</div><div style={{ color: COLORS.muted }}>frais d'installation</div>
-          <div className="swift-btn-hover"><Btn full style={{ marginTop: 16 }} onClick={() => go("register")}>Démarrer avec Swift →</Btn></div>
+          <div className="swift-btn-hover"><Btn full style={{ marginTop: 16 }} onClick={() => go("enterprise_dashboard")}>Démarrer avec Swift →</Btn></div>
         </Card>
       </section>
       <section className="reveal-on-scroll" style={{ background: COLORS.primary, padding: "56px 60px", textAlign: "center", color: COLORS.white }}>
@@ -535,7 +574,7 @@ function ClientAppPlatform({ onBack }) {
     <div style={{ minHeight: "100vh", background: COLORS.bgDark, display: "grid", placeItems: "center", padding: 24, position: "relative" }}>
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 0%, rgba(255,107,0,0.25), transparent 55%)" }} />
       <Card dark style={{ width: "100%", maxWidth: 480, padding: 36, position: "relative", zIndex: 1 }}>{children}</Card>
-      <Btn size="sm" variant="ghost" style={{ position: "fixed", top: 16, left: 16 }} onClick={onBack}>← Rôles</Btn>
+      <Btn size="sm" variant="ghost" style={{ position: "fixed", top: 16, left: 16 }} onClick={() => go("landing")}>← Accueil</Btn>
     </div>
   );
 
@@ -547,8 +586,20 @@ function ClientAppPlatform({ onBack }) {
       <p style={{ textAlign: "center", color: COLORS.textMuted, fontSize: 14 }}>Connectez-vous à Swift</p>
       <Input icon="✉️" placeholder="Email" value={email} onChange={setEmail} />
       <Input icon="🔒" type="password" placeholder="Mot de passe" value={pass} onChange={setPass} />
+      {authErr && <div style={{ color: COLORS.red, fontSize: 12, marginBottom: 8 }}>{authErr}</div>}
       <div style={{ textAlign: "right", marginBottom: 12 }}><button type="button" onClick={() => go("forgot")} style={{ ...RF, border: "none", background: "none", color: COLORS.primary, cursor: "pointer", fontWeight: 700 }}>Mot de passe oublié ?</button></div>
-      <Btn full onClick={() => { if (!email || !pass) return; setUser({ name: "Client Swift", email, city: "Casablanca" }); go("dashboard"); }}>Se connecter</Btn>
+      <Btn full onClick={async () => {
+        if (!email || !pass) return;
+        try {
+          setAuthErr("");
+          const r = await api("/login", { method: "POST", body: JSON.stringify({ username: email, password: pass }) });
+          setUser({ name: r.username || email, email: r.username || email, city: "Casablanca" });
+          setIsAuthenticated(true);
+          go("dashboard");
+        } catch (e) {
+          setAuthErr(e.message);
+        }
+      }}>Se connecter</Btn>
       <div style={{ textAlign: "center", marginTop: 16, color: COLORS.textMuted }}><button type="button" style={{ ...RF, border: "none", background: "none", color: COLORS.primary, cursor: "pointer" }} onClick={() => go("register")}>Créer un compte</button></div>
       <button type="button" onClick={() => go("landing")} style={{ ...RF, border: "none", background: "none", color: COLORS.textMuted, cursor: "pointer", marginTop: 12, fontSize: 12 }}>← Retour à l'accueil</button>
     </AuthCard>
@@ -564,8 +615,20 @@ function ClientAppPlatform({ onBack }) {
       </> : <>
         <h1 style={{ color: COLORS.textDark, fontWeight: 900, fontSize: 24 }}>Sécuriser le compte</h1>
         <Input icon="🔒" type="password" placeholder="Mot de passe" value={pass} onChange={setPass} />
-        <Btn full onClick={() => { setUser({ name: name || "Client", email, city: "Casablanca" }); go("dashboard"); }}>Créer mon compte 🎉</Btn>
+        <Btn full onClick={async () => {
+          try {
+            setAuthErr("");
+            await api("/register", { method: "POST", body: JSON.stringify({ username: email || name, password: pass || "123456", role: "client" }) });
+            await api("/login", { method: "POST", body: JSON.stringify({ username: email || name, password: pass || "123456" }) });
+            setUser({ name: name || "Client", email: email || name, city: "Casablanca" });
+            setIsAuthenticated(true);
+            go("dashboard");
+          } catch (e) {
+            setAuthErr(e.message);
+          }
+        }}>Créer mon compte 🎉</Btn>
       </>}
+      {authErr && <div style={{ color: COLORS.red, fontSize: 12, marginTop: 8 }}>{authErr}</div>}
       <button type="button" onClick={() => regStep === 2 ? setRegStep(1) : go("landing")} style={{ ...RF, marginTop: 12, border: "none", background: "none", color: COLORS.textMuted, cursor: "pointer" }}>← Retour</button>
     </AuthCard>
   );
@@ -584,35 +647,40 @@ function ClientAppPlatform({ onBack }) {
   );
 
   const shell = (body) => (
-    <div style={{ display: "flex", minHeight: "100vh", background: COLORS.bgDark }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "#F5F4F0" }}>
       <ClientSidebar />
-      <main style={{ flex: 1, overflow: "auto" }}>
+      <main style={{ flex: 1, overflow: "auto", background: "#F5F4F0" }}>
         <PageFade>{body}</PageFade>
       </main>
-      <Btn size="sm" variant="ghost" style={{ position: "fixed", top: 12, right: 12, zIndex: 50 }} onClick={onBack}>← Rôles</Btn>
+      <Btn size="sm" variant="ghost" style={{ position: "fixed", top: 12, right: 12, zIndex: 50 }} onClick={() => go("landing")}>← Accueil</Btn>
     </div>
   );
 
+  if (screen === "livreur_dashboard") return <LivreurAppPlatform initialScreen="app" onBackToLanding={() => go("landing")} />;
+  if (screen === "enterprise_dashboard") return <EnterpriseAppPlatform initialScreen="app" onBackToLanding={() => go("landing")} />;
+  if (screen === "admin_dashboard") return <AdminAppPlatform initialScreen="app" onBackToLanding={() => go("landing")} orders={orders} />;
+
+  if (screen === "dashboard" && !isAuthenticated) return go("login"), null;
   if (screen === "dashboard") return shell(
     <div style={{ padding: 28 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div><div style={{ color: COLORS.textMuted, fontSize: 14 }}>Bonjour 👋</div><div style={{ fontSize: 28, fontWeight: 900, color: COLORS.textDark }}>Que souhaitez-vous ?</div></div>
-        <input placeholder="Rechercher…" style={{ ...RF, width: 340, padding: "12px 20px", borderRadius: 50, border: `1px solid ${COLORS.borderDark}`, background: COLORS.cardDark, color: COLORS.textDark }} />
+        <input placeholder="Rechercher…" style={{ ...RF, width: 340, padding: "12px 20px", borderRadius: 50, border: "1px solid #EBEBEB", background: "#F8F8F8", color: "#0D0D0D" }} />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
-        <Card dark style={{ padding: 20, background: "linear-gradient(135deg,#FF6B00,#FF3500)", border: "none", color: COLORS.white }}><div style={{ fontWeight: 800 }}>Livraison gratuite</div><div style={{ fontSize: 24 }}>🛵</div></Card>
-        <StatCard dark value="<12 min" label="Délai moyen" />
-        <StatCard dark value="22" label="Enseignes" />
-        <StatCard dark value="2400" label="Cmd / jour" />
+        <Card style={{ padding: 20, background: "linear-gradient(135deg,#FF6B00,#FF3500)", border: "none", color: COLORS.white }}><div style={{ fontWeight: 800 }}>Livraison gratuite</div><div style={{ fontSize: 24 }}>🛵</div></Card>
+        <StatCard value="<12 min" label="Délai moyen" />
+        <StatCard value="22" label="Enseignes" />
+        <StatCard value="2400" label="Cmd / jour" />
       </div>
       <div style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 20, paddingBottom: 8 }}>
-        <button type="button" onClick={() => setCatF(null)} style={{ ...RF, padding: "8px 16px", borderRadius: 50, border: "none", background: !catF ? COLORS.primary : COLORS.cardDark, color: COLORS.white, cursor: "pointer", whiteSpace: "nowrap" }}>Tout</button>
-        {CAT_CLIENT.map((c) => <button key={c.id} type="button" onClick={() => setCatF(c.id)} style={{ ...RF, padding: "8px 16px", borderRadius: 50, border: "none", background: catF === c.id ? COLORS.primary : COLORS.cardDark, color: COLORS.white, cursor: "pointer", whiteSpace: "nowrap" }}>{c.icon} {c.label}</button>)}
+        <button type="button" onClick={() => setCatF(null)} style={{ ...RF, padding: "8px 16px", borderRadius: 50, border: "1px solid #EBEBEB", background: !catF ? COLORS.primary : "#FFFFFF", color: !catF ? "#FFFFFF" : "#0D0D0D", cursor: "pointer", whiteSpace: "nowrap" }}>Tout</button>
+        {CAT_CLIENT.map((c) => <button key={c.id} type="button" onClick={() => setCatF(c.id)} style={{ ...RF, padding: "8px 16px", borderRadius: 50, border: "1px solid #EBEBEB", background: catF === c.id ? COLORS.primary : "#FFFFFF", color: catF === c.id ? "#FFFFFF" : "#0D0D0D", cursor: "pointer", whiteSpace: "nowrap" }}>{c.icon} {c.label}</button>)}
       </div>
       <div style={{ fontWeight: 800, color: COLORS.textDark, marginBottom: 12 }}>Près de vous ({livBiz.length})</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 14 }}>
         {livBiz.map((b) => (
-          <Card key={b.id} dark style={{ padding: 16, cursor: "pointer" }} onClick={() => { setBiz(b); go("catalogue"); }}>
+          <Card key={b.id} style={{ padding: 16, cursor: "pointer", background: "#FFFFFF" }} onClick={() => { setBiz(b); go("catalogue"); }}>
             <div style={{ fontSize: 36 }}>{b.icon}</div>
             <div style={{ fontWeight: 800, color: COLORS.textDark }}>{b.name}</div>
             <div style={{ fontSize: 12, color: COLORS.textMuted }}>{b.cat} · {b.time} min</div>
@@ -623,6 +691,7 @@ function ClientAppPlatform({ onBack }) {
     </div>
   );
 
+  if (screen === "catalogue" && !isAuthenticated) return go("login"), null;
   if (screen === "catalogue") return shell(
     <div style={{ padding: 24 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
@@ -632,13 +701,24 @@ function ClientAppPlatform({ onBack }) {
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>{["All", "<5", "5-10", ">10"].map((p) => <Btn key={p} size="sm" variant={priceF === p ? "primary" : "ghost"} onClick={() => setPriceF(p)}>{p === "All" ? "Tous" : p === "<5" ? "< 5 €" : p === "5-10" ? "5–10 €" : "> 10 €"}</Btn>)}</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 14 }}>
-        {filtProd.map((p) => (
-          <Card key={p.id} dark style={{ padding: 16 }}>
-            <div style={{ fontSize: 40, textAlign: "center", padding: 12, background: COLORS.surfaceDark, borderRadius: 12 }}>{p.icon}</div>
-            <div style={{ fontWeight: 700, color: COLORS.textDark, marginTop: 8 }}>{p.name}</div>
+        {getMenuByCategorie(
+          biz?.cat === "restaurant" ? "Restaurant" :
+          biz?.cat === "pharmacy" ? "Pharmacie" :
+          biz?.cat === "groceries" ? "Épicerie" :
+          biz?.cat === "flowers" ? "Fleurs" :
+          biz?.cat === "sports" ? "Sports" : "Restaurant"
+        ).filter((p) => priceF === "All" || (priceF === "<5" && p.prix < 5) || (priceF === "5-10" && p.prix >= 5 && p.prix <= 10) || (priceF === ">10" && p.prix > 10)).map((p, idx) => (
+          <Card key={`${p.nom}-${idx}`} style={{ padding: 16, background: "#FFFFFF" }}>
+            <img
+              src={p.image}
+              alt={p.nom}
+              style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 12, marginBottom: 12, backgroundColor: "#222" }}
+              onError={(e) => { e.target.style.display = "none"; }}
+            />
+            <div style={{ fontWeight: 700, color: "#0D0D0D", marginTop: 8 }}>{p.nom}</div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-              <span style={{ color: COLORS.primary, fontWeight: 900 }}>{eur(p.price)}</span>
-              <button type="button" onClick={() => addCart(p)} style={{ ...RF, width: 32, height: 32, borderRadius: 10, border: "none", background: inCart(p.id) ? COLORS.green : COLORS.primary, color: COLORS.white, cursor: "pointer", fontWeight: 900 }}>{inCart(p.id) ? "✓" : "+"}</button>
+              <span style={{ color: COLORS.primary, fontWeight: 900 }}>{eur(p.prix)}</span>
+              <button type="button" onClick={() => addCart({ id: `${biz?.id}-${idx}`, name: p.nom, price: p.prix, icon: "🛍️" })} style={{ ...RF, width: 32, height: 32, borderRadius: 10, border: "none", background: COLORS.primary, color: COLORS.white, cursor: "pointer", fontWeight: 900 }}>+</button>
             </div>
           </Card>
         ))}
@@ -646,12 +726,13 @@ function ClientAppPlatform({ onBack }) {
     </div>
   );
 
+  if (screen === "cart" && !isAuthenticated) return go("login"), null;
   if (screen === "cart") return shell(
     <div style={{ padding: 24, display: "grid", gridTemplateColumns: "1fr 360px", gap: 24 }}>
       <div>
         <h1 style={{ color: COLORS.textDark, fontWeight: 900, fontSize: 24 }}>Mon panier</h1>
-        {!cart.length ? <Card dark style={{ padding: 48, textAlign: "center", marginTop: 24 }}><div style={{ fontSize: 48 }}>🛒</div><p style={{ color: COLORS.textMuted }}>Votre panier est vide</p><Btn onClick={() => go("dashboard")}>Parcourir les boutiques</Btn></Card> : cart.map((i) => (
-          <Card key={i.id} dark style={{ padding: 16, marginTop: 12, display: "flex", alignItems: "center", gap: 14 }}>
+        {!cart.length ? <Card style={{ padding: 48, textAlign: "center", marginTop: 24, background: "#FFFFFF" }}><div style={{ fontSize: 48 }}>🛒</div><p style={{ color: COLORS.textMuted }}>Votre panier est vide</p><Btn onClick={() => go("dashboard")}>Parcourir les boutiques</Btn></Card> : cart.map((i) => (
+          <Card key={i.id} style={{ padding: 16, marginTop: 12, display: "flex", alignItems: "center", gap: 14, background: "#FFFFFF" }}>
             <span style={{ fontSize: 32 }}>{i.icon}</span>
             <div style={{ flex: 1 }}><div style={{ fontWeight: 700, color: COLORS.textDark }}>{i.name}</div><div style={{ color: COLORS.primary, fontWeight: 900 }}>{eur(i.price * i.qty)}</div></div>
             <Btn size="sm" variant="ghost" onClick={() => setCart((prev) => prev.flatMap((x) => x.id !== i.id ? [x] : x.qty > 1 ? [{ ...x, qty: x.qty - 1 }] : []))}>−</Btn>
@@ -661,10 +742,10 @@ function ClientAppPlatform({ onBack }) {
         ))}
       </div>
       <div>
-        <Card dark style={{ padding: 20, position: "sticky", top: 24 }}>
+        <Card style={{ padding: 20, position: "sticky", top: 24, background: "#FFFFFF" }}>
           <div style={{ display: "flex", justifyContent: "space-between", color: COLORS.textMuted }}><span>Sous-total</span><span>{eur(subtotal)}</span></div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, color: COLORS.textMuted }}><span>Livraison</span><span>{eur(2.99)}</span></div>
-          <div style={{ height: 1, background: COLORS.borderDark, margin: "16px 0" }} />
+          <div style={{ height: 1, background: COLORS.border, margin: "16px 0" }} />
           <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900, fontSize: 20, color: COLORS.primary }}><span>Total</span><span>{eur(subtotal + (cart.length ? 2.99 : 0))}</span></div>
           <Btn full style={{ marginTop: 16 }} disabled={!cart.length} onClick={() => { setCheckoutOk(false); go("checkout"); }}>Passer la commande →</Btn>
         </Card>
@@ -672,6 +753,7 @@ function ClientAppPlatform({ onBack }) {
     </div>
   );
 
+  if (screen === "checkout" && !isAuthenticated) return go("login"), null;
   if (screen === "checkout") return shell(
     checkoutOk ? <div style={{ minHeight: "70vh", display: "grid", placeItems: "center", textAlign: "center" }}>
       <div style={{ fontSize: 72 }}>🎉</div>
@@ -680,30 +762,43 @@ function ClientAppPlatform({ onBack }) {
     </div> : <div style={{ padding: 24, display: "grid", gridTemplateColumns: "1fr 380px", gap: 24 }}>
       <div>
         <h1 style={{ color: COLORS.textDark, fontWeight: 900 }}>Finaliser</h1>
-        <Card dark style={{ padding: 20, marginTop: 16 }}><div style={{ fontWeight: 800, marginBottom: 8 }}>🏠 Adresse</div><Input value={addr} onChange={setAddr} placeholder="Adresse" /></Card>
-        <Card dark style={{ padding: 20, marginTop: 16 }}>
+        <Card style={{ padding: 20, marginTop: 16, background: "#FFFFFF" }}><div style={{ fontWeight: 800, marginBottom: 8 }}>🏠 Adresse</div><Input light value={addr} onChange={setAddr} placeholder="Adresse" /></Card>
+        <Card style={{ padding: 20, marginTop: 16, background: "#FFFFFF" }}>
           <div style={{ fontWeight: 800, marginBottom: 8 }}>Paiement</div>
           {[["cash", "💵 Espèces"], ["card", "💳 En ligne"]].map(([k, lab]) => (
-            <button key={k} type="button" onClick={() => setPay(k)} style={{ ...RF, width: "100%", padding: 14, marginBottom: 8, borderRadius: 12, border: `1px solid ${pay === k ? COLORS.primary : COLORS.borderDark}`, background: pay === k ? COLORS.primaryGlow : COLORS.surfaceDark, color: COLORS.textDark, cursor: "pointer", textAlign: "left" }}>{lab}</button>
+            <button key={k} type="button" onClick={() => setPay(k)} style={{ ...RF, width: "100%", padding: 14, marginBottom: 8, borderRadius: 12, border: `1px solid ${pay === k ? COLORS.primary : COLORS.border}`, background: pay === k ? COLORS.primaryGlow : "#F8F8F8", color: "#0D0D0D", cursor: "pointer", textAlign: "left" }}>{lab}</button>
           ))}
         </Card>
       </div>
-      <Card dark style={{ padding: 20, height: "fit-content" }}>
+      <Card style={{ padding: 20, height: "fit-content", background: "#FFFFFF" }}>
         <div style={{ color: COLORS.textMuted, display: "flex", justifyContent: "space-between" }}><span>Total</span><span style={{ color: COLORS.primary, fontWeight: 900 }}>{eur(subtotal + 2.99)}</span></div>
-        <Btn full style={{ marginTop: 16 }} onClick={() => { setCheckoutOk(true); setCart([]); }}>Confirmer la commande ✅</Btn>
+        <Btn full style={{ marginTop: 16 }} onClick={() => {
+          const newOrder = {
+            id: `#${String(orders.length + 1).padStart(4, "0")}`,
+            entreprise: biz?.name || "Entreprise",
+            date: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }),
+            articles: cart,
+            total: subtotal + 2.99,
+            statut: "Livré",
+          };
+          setOrders((prev) => [newOrder, ...prev]);
+          setCheckoutOk(true);
+          setCart([]);
+        }}>Confirmer la commande ✅</Btn>
       </Card>
     </div>
   );
 
+  if (screen === "tracking" && !isAuthenticated) return go("login"), null;
   if (screen === "tracking") return shell(
     <div style={{ padding: 24, display: "grid", gridTemplateColumns: "1fr 360px", gap: 24 }}>
-      <Card dark style={{ padding: 40, minHeight: 320, display: "grid", placeItems: "center", background: "linear-gradient(160deg,#1a1a24,#0a0a10)" }}>
+      <Card style={{ padding: 40, minHeight: 320, display: "grid", placeItems: "center", background: "#FFFFFF" }}>
         <div style={{ textAlign: "center" }}><div style={{ fontSize: 64 }}>🗺️</div><div style={{ fontWeight: 800, color: COLORS.textDark }}>Carte en temps réel</div>{trackStep === 1 && <div style={{ fontSize: 40, marginTop: 16 }}>🛵</div>}</div>
       </Card>
-      <Card dark style={{ padding: 20 }}>
+      <Card style={{ padding: 20, background: "#FFFFFF" }}>
         {[["👨‍🍳", "En préparation"], ["🛵", "En route"], ["✅", "Livré"]].map(([ic, lb], i) => (
           <div key={lb} style={{ display: "flex", gap: 12, marginBottom: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: "50%", background: i <= trackStep ? COLORS.primary : COLORS.surfaceDark, display: "grid", placeItems: "center" }}>{ic}</div>
+            <div style={{ width: 36, height: 36, borderRadius: "50%", background: i <= trackStep ? COLORS.primary : "#F5F4F0", display: "grid", placeItems: "center" }}>{ic}</div>
             <div style={{ color: i <= trackStep ? COLORS.textDark : COLORS.textMuted, fontWeight: 700 }}>{lb}</div>
           </div>
         ))}
@@ -712,30 +807,41 @@ function ClientAppPlatform({ onBack }) {
     </div>
   );
 
+  if (screen === "history" && !isAuthenticated) return go("login"), null;
   if (screen === "history") return shell(
     <div style={{ padding: 24 }}>
       <h1 style={{ color: COLORS.textDark, fontWeight: 900 }}>Mes commandes</h1>
-      {ORDERS_CLIENT.map((o) => (
-        <Card key={o.id} dark style={{ padding: 16, marginTop: 12, cursor: "pointer" }} onClick={() => setHistOpen(histOpen === o.id ? null : o.id)}>
+      {orders.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 60 }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>📦</div>
+          <div style={{ fontWeight: 700, fontSize: 18, color: "#0D0D0D", marginBottom: 8 }}>Aucune commande pour l'instant</div>
+          <div style={{ color: "#888", marginBottom: 24 }}>Vos commandes passées apparaîtront ici.</div>
+          <button type="button" onClick={() => go("dashboard")} style={{ ...RF, border: "none", background: COLORS.primary, color: "#fff", padding: "10px 18px", borderRadius: 999, cursor: "pointer", fontWeight: 700 }}>
+            Parcourir les boutiques
+          </button>
+        </div>
+      ) : orders.map((o) => (
+        <Card key={o.id} style={{ padding: 16, marginTop: 12, cursor: "pointer", background: "#FFFFFF" }} onClick={() => setHistOpen(histOpen === o.id ? null : o.id)}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <div><Badge variant="warning">{o.id}</Badge><div style={{ fontWeight: 800, color: COLORS.textDark }}>{o.store}</div><div style={{ fontSize: 12, color: COLORS.textMuted }}>{o.date}</div></div>
-            <div style={{ textAlign: "right" }}><div style={{ color: COLORS.primary, fontWeight: 900 }}>{eur(o.total)}</div><Badge variant="success">{o.status}</Badge></div>
+            <div><Badge variant="warning">{o.id}</Badge><div style={{ fontWeight: 800, color: COLORS.black }}>{o.entreprise}</div><div style={{ fontSize: 12, color: COLORS.muted }}>{o.date}</div></div>
+            <div style={{ textAlign: "right" }}><div style={{ color: COLORS.primary, fontWeight: 900 }}>{eur(o.total)}</div><Badge variant="success">{o.statut}</Badge></div>
           </div>
-          {histOpen === o.id && <div style={{ marginTop: 12, borderTop: `1px solid ${COLORS.borderDark}`, paddingTop: 12 }}>{o.items.map((it) => <Badge key={it} variant="muted" style={{ marginRight: 6 }}>{it}</Badge>)}<div style={{ display: "flex", gap: 8, marginTop: 12 }}><Btn size="sm" variant="outline">⭐ Évaluer</Btn><Btn size="sm" variant="ghost">🔁 Recommander</Btn></div></div>}
+          {histOpen === o.id && <div style={{ marginTop: 12, borderTop: `1px solid ${COLORS.border}`, paddingTop: 12 }}>{o.articles.map((it, i) => <Badge key={`${it.name}-${i}`} variant="muted" style={{ marginRight: 6 }}>{it.name} x{it.qty}</Badge>)}<div style={{ display: "flex", gap: 8, marginTop: 12 }}><Btn size="sm" variant="outline">⭐ Évaluer</Btn><Btn size="sm" variant="ghost">🔁 Recommander</Btn></div></div>}
         </Card>
       ))}
     </div>
   );
 
+  if (screen === "profile" && !isAuthenticated) return go("login"), null;
   if (screen === "profile") return shell(
     <div style={{ padding: 24, display: "grid", gridTemplateColumns: "1fr 400px", gap: 24 }}>
       <div>
         <Card style={{ padding: 24, background: "linear-gradient(145deg,#FF6B00,#FF3500)", border: "none", color: COLORS.white }}>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}><Avatar emoji="👤" size={64} /><div><div style={{ fontWeight: 900, fontSize: 22 }}>{user?.name}</div><div style={{ opacity: 0.9 }}>{user?.email}</div><div style={{ fontSize: 13 }}>Casablanca</div></div></div>
         </Card>
-        {["Informations personnelles", "Adresses", "Modes de paiement", "Sécurité"].map((t) => <Card key={t} dark style={{ padding: 16, marginTop: 12, display: "flex", justifyContent: "space-between", cursor: "pointer" }}><span>{t}</span><span>›</span></Card>)}
+        {["Informations personnelles", "Adresses", "Modes de paiement", "Sécurité"].map((t) => <Card key={t} style={{ padding: 16, marginTop: 12, display: "flex", justifyContent: "space-between", cursor: "pointer", background: "#FFFFFF" }}><span>{t}</span><span>›</span></Card>)}
       </div>
-      <Card dark style={{ padding: 20 }}>
+      <Card style={{ padding: 20, background: "#FFFFFF" }}>
         <div style={{ fontWeight: 800, marginBottom: 16 }}>Notifications</div>
         {[
           ["Mises à jour commandes", "cmd"],
@@ -747,7 +853,7 @@ function ClientAppPlatform({ onBack }) {
             <Toggle on={profNotif[key]} onToggle={(v) => setProfNotif((p) => ({ ...p, [key]: v }))} />
           </div>
         ))}
-        <Btn full variant="danger" style={{ marginTop: 24 }} onClick={() => { setUser(null); go("landing"); }}>Se déconnecter</Btn>
+        <Btn full variant="danger" style={{ marginTop: 24 }} onClick={() => { setUser(null); setIsAuthenticated(false); go("landing"); }}>Se déconnecter</Btn>
       </Card>
     </div>
   );
@@ -756,8 +862,8 @@ function ClientAppPlatform({ onBack }) {
 }
 
 /* ═══════════════ LIVREUR APP (mobile 480px) ═══════════════ */
-function LivreurAppPlatform({ onBack }) {
-  const [screen, setScreen] = useState("login");
+function LivreurAppPlatform({ initialScreen = "login", onBackToLanding }) {
+  const [screen, setScreen] = useState(initialScreen);
   const [online, setOnline] = useState(false);
   const [onboardStep, setOnboardStep] = useState(1);
   const [delStep, setDelStep] = useState(0);
@@ -784,7 +890,23 @@ function LivreurAppPlatform({ onBack }) {
           </div>
         )}
       </div>
-      <Btn size="sm" variant="ghost" style={{ position: "fixed", top: 8, left: 8, zIndex: 100 }} onClick={onBack}>← Rôles</Btn>
+      <div
+        onClick={() => onBackToLanding && onBackToLanding()}
+        style={{
+          color: "#7777A0",
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+          padding: "12px 14px",
+          textAlign: "center",
+          borderTop: "1px solid #26263A",
+          marginTop: "auto",
+          width: "100%",
+          maxWidth: 480,
+        }}
+      >
+        ← Retour à l'accueil
+      </div>
     </div>
   );
 
@@ -877,8 +999,8 @@ function LivreurAppPlatform({ onBack }) {
 }
 
 /* ═══════════════ ENTERPRISE APP ═══════════════ */
-function EnterpriseAppPlatform({ onBack }) {
-  const [screen, setScreen] = useState("login");
+function EnterpriseAppPlatform({ initialScreen = "login", onBackToLanding }) {
+  const [screen, setScreen] = useState(initialScreen);
   const [nav, setNav] = useState("dash");
   const [open, setOpen] = useState(false);
   const [obStep, setObStep] = useState(1);
@@ -900,6 +1022,21 @@ function EnterpriseAppPlatform({ onBack }) {
       <div style={{ marginTop: "auto", padding: 16, display: "flex", alignItems: "center", gap: 8 }}>
         <Avatar emoji="🍔" size={36} /><div><div style={{ fontWeight: 700, fontSize: 13 }}>Burger Palace</div><Badge variant="success">En ligne</Badge></div>
       </div>
+      <div
+        onClick={() => onBackToLanding && onBackToLanding()}
+        style={{
+          color: "#7777A0",
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+          padding: "12px 14px",
+          textAlign: "center",
+          borderTop: "1px solid #26263A",
+          marginTop: "auto"
+        }}
+      >
+        ← Retour à l'accueil
+      </div>
     </aside>
   );
 
@@ -913,7 +1050,7 @@ function EnterpriseAppPlatform({ onBack }) {
         <Btn full onClick={() => setScreen("app")}>Connexion</Btn>
         <button type="button" onClick={() => { setObStep(1); setScreen("eob"); }} style={{ ...RF, border: "none", background: "none", color: COLORS.primary, cursor: "pointer", marginTop: 12, width: "100%" }}>Créer mon espace entreprise</button>
       </Card>
-      <Btn size="sm" variant="outline" style={{ position: "fixed", top: 12, left: 12 }} onClick={onBack}>← Rôles</Btn>
+      <Btn size="sm" variant="outline" style={{ position: "fixed", top: 12, left: 12 }} onClick={() => onBackToLanding && onBackToLanding()}>← Accueil</Btn>
     </div>
   );
 
@@ -954,20 +1091,33 @@ function EnterpriseAppPlatform({ onBack }) {
     <div style={{ ...RF, display: "flex", minHeight: "100vh" }}>
       <Side />
       <Main />
-      <Btn size="sm" variant="outline" style={{ position: "fixed", top: 12, right: 12 }} onClick={onBack}>← Rôles</Btn>
+      <Btn size="sm" variant="outline" style={{ position: "fixed", top: 12, right: 12 }} onClick={() => onBackToLanding && onBackToLanding()}>← Accueil</Btn>
     </div>
   );
 }
 
 /* ═══════════════ ADMIN APP ═══════════════ */
-function AdminAppPlatform({ onBack }) {
-  const [screen, setScreen] = useState("login");
+function AdminAppPlatform({ initialScreen = "login", onBackToLanding, orders = [] }) {
+  const [screen, setScreen] = useState(initialScreen);
   const [nav, setNav] = useState("dash");
   const [panel, setPanel] = useState(null);
   const [modal, setModal] = useState(null);
+  const CLIENTS = MOCK_CLIENTS;
+  const LIVREURS = MOCK_LIVREURS;
+  const ENTREPRISES = MOCK_ENTREPRISES;
+  const COMMANDES = orders;
+  const aujourdhui = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  const totalClients = CLIENTS.length;
+  const totalLivreurs = LIVREURS.length;
+  const livreursActifs = LIVREURS.filter((l) => l.statut === "Actif" || l.statut === "En ligne").length;
+  const totalEntreprises = ENTREPRISES.length;
+  const entreprisesActives = ENTREPRISES.filter((e) => e.statut === "Actif" || e.statut === "Active").length;
+  const commandesAujourdhui = COMMANDES.filter((c) => c.date === aujourdhui).length;
+  const gmvAujourdhui = COMMANDES.reduce((sum, c) => sum + (c.total || 0), 0);
+  const commissionPercue = gmvAujourdhui * 0.12;
 
   const Side = () => (
-    <aside style={{ width: 260, background: COLORS.surfaceDark, borderRight: `1px solid ${COLORS.borderDark}`, minHeight: "100vh" }}>
+    <aside style={{ width: 260, background: COLORS.surfaceDark, borderRight: `1px solid ${COLORS.borderDark}`, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: 20, fontWeight: 900, color: COLORS.textDark }}>⚙️ Administration</div>
       {[
         ["dash", "📊", "Vue d'ensemble"],
@@ -983,6 +1133,21 @@ function AdminAppPlatform({ onBack }) {
       ].map(([k, i, l]) => (
         <button key={k} type="button" onClick={() => { setNav(k); setScreen("app"); }} style={{ ...RF, display: "block", width: "100%", textAlign: "left", padding: "12px 20px", border: "none", background: nav === k ? COLORS.primaryGlow : "transparent", color: nav === k ? COLORS.primary : COLORS.textMuted, fontWeight: 700, cursor: "pointer" }}>{i} {l}</button>
       ))}
+      <div
+        onClick={() => onBackToLanding && onBackToLanding()}
+        style={{
+          color: "#7777A0",
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+          padding: "12px 14px",
+          textAlign: "center",
+          borderTop: "1px solid #26263A",
+          marginTop: "auto"
+        }}
+      >
+        ← Retour à l'accueil
+      </div>
     </aside>
   );
 
@@ -996,7 +1161,7 @@ function AdminAppPlatform({ onBack }) {
         <Input type="password" placeholder="Mot de passe" value="" onChange={() => { }} />
         <Btn full onClick={() => setScreen("app")}>Connexion sécurisée</Btn>
       </Card>
-      <Btn size="sm" variant="ghost" style={{ position: "fixed", top: 12, left: 12 }} onClick={onBack}>← Rôles</Btn>
+      <Btn size="sm" variant="ghost" style={{ position: "fixed", top: 12, left: 12 }} onClick={() => onBackToLanding && onBackToLanding()}>← Accueil</Btn>
     </div>
   );
 
@@ -1023,10 +1188,24 @@ function AdminAppPlatform({ onBack }) {
     return (
       <div style={{ padding: 28, flex: 1, background: COLORS.bgDark }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}><div style={{ fontWeight: 900, color: COLORS.textDark, fontSize: 20 }}>Vue d'ensemble</div><Badge variant="danger">3 alertes</Badge></div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 12 }}>{[["Clients", "12 450"], ["Livreurs", "287"], ["Entreprises", "52"], ["Cmd/jour", "2 419"], ["GMV", "48 230 €"], ["Commission", "5 627 €"]].map(([a, b]) => <StatCard key={a} dark value={b} label={a} />)}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 12 }}>
+          <StatCard dark value={totalClients} label="Total Clients" />
+          <StatCard dark value={`${livreursActifs}/${totalLivreurs}`} label="Livreurs actifs" />
+          <StatCard dark value={totalEntreprises} label="Entreprises" />
+          <StatCard dark value={entreprisesActives} label="Entreprises actives" />
+          <StatCard dark value={commandesAujourdhui} label="Commandes aujourd'hui" />
+          <StatCard dark value={`${gmvAujourdhui.toFixed(2)} MAD`} label="GMV aujourd'hui" sub={`Commission: ${commissionPercue.toFixed(2)} MAD`} />
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 20, marginTop: 24 }}>
           <Card dark style={{ padding: 20, height: 240 }}><div style={{ fontWeight: 800, color: COLORS.textDark, marginBottom: 12 }}>Revenus plateforme (30 j.)</div><svg width="100%" height="160" viewBox="0 0 300 120"><polyline fill="none" stroke={COLORS.primary} strokeWidth="2" points="0,100 50,80 100,90 150,40 200,50 250,30 300,20" /></svg></Card>
-          <Card dark style={{ padding: 16 }}><div style={{ fontWeight: 800, color: COLORS.textDark }}>Flux commandes</div>{MOCK_COMMANDES.slice(0, 6).map((o) => <div key={o.id} style={{ fontSize: 12, padding: "8px 0", borderBottom: `1px solid ${COLORS.borderDark}` }}><span style={{ color: COLORS.primary }}>{o.id}</span> · {eur(o.montant)} · <span style={{ color: COLORS.textMuted }}>il y a 30 s</span></div>)}</Card>
+          <Card dark style={{ padding: 16 }}>
+            <div style={{ fontWeight: 800, color: COLORS.textDark }}>Flux commandes</div>
+            {COMMANDES.length === 0 ? (
+              <div style={{ color: "#7777A0", textAlign: "center", padding: 24, fontSize: 14 }}>Aucune commande pour l'instant</div>
+            ) : (
+              COMMANDES.slice(0, 10).map((o) => <div key={o.id} style={{ fontSize: 12, padding: "8px 0", borderBottom: `1px solid ${COLORS.borderDark}` }}><span style={{ color: COLORS.primary }}>{o.id}</span> · {eur(o.total)} · <span style={{ color: COLORS.textMuted }}>{o.entreprise}</span></div>)
+            )}
+          </Card>
         </div>
       </div>
     );
@@ -1037,7 +1216,7 @@ function AdminAppPlatform({ onBack }) {
       <Side />
       <Main />
       <Btn size="sm" variant="ghost" style={{ position: "fixed", top: 12, right: 12 }} onClick={() => setScreen("login")}>Déconnexion</Btn>
-      <Btn size="sm" variant="ghost" style={{ position: "fixed", top: 12, right: 100 }} onClick={onBack}>← Rôles</Btn>
+      <Btn size="sm" variant="ghost" style={{ position: "fixed", top: 12, right: 100 }} onClick={() => onBackToLanding && onBackToLanding()}>← Accueil</Btn>
     </div>
   );
 }
