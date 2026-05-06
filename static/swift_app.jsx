@@ -32,6 +32,14 @@ const COLORS = {
 const RF = { fontFamily: "Outfit, sans-serif" };
 const eur = (n) => `${Number(n).toFixed(2)} €`;
 const mad = (n) => `${Number(n).toFixed(0)} MAD`;
+const formatFrDateTime = (iso) => {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  } catch (_) {
+    return "—";
+  }
+};
 const getCookie = (name) => {
   const m = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
   return m ? decodeURIComponent(m[1]) : "";
@@ -68,7 +76,7 @@ function Btn({ children, onClick, variant = "primary", size = "md", full, style,
   );
 }
 
-function Input({ label, type = "text", onCommit, icon, placeholder, dark = true, initialValue = "", multiline, rows = 3, value }) {
+function Input({ label, type = "text", onCommit, onLive, icon, placeholder, dark = true, initialValue = "", multiline, rows = 3, value }) {
   const [val, setVal] = useState(value ?? initialValue);
   useEffect(() => {
     if (value !== undefined) setVal(value);
@@ -76,17 +84,41 @@ function Input({ label, type = "text", onCommit, icon, placeholder, dark = true,
   const bg = dark ? "#18181F" : "#F8F8F8";
   const color = dark ? "#F0F0FA" : "#0D0D0D";
   const border = dark ? "#26263A" : "#EBEBEB";
+  const commit = (v) => {
+    if (onCommit) onCommit(v);
+  };
+  const live = (v) => {
+    if (onLive) onLive(v);
+  };
   return (
     <div style={{ marginBottom: 16 }}>
       {label && <div style={{ ...RF, color: dark ? "#7777A0" : "#888", fontSize: 13, marginBottom: 6, fontWeight: 600 }}>{label}</div>}
       <div style={{ position: "relative" }}>
         {icon && <span style={{ position: "absolute", left: 14, top: multiline ? 12 : "50%", transform: multiline ? "none" : "translateY(-50%)", fontSize: 16 }}>{icon}</span>}
         {multiline ? (
-          <textarea value={val} onChange={(e) => setVal(e.target.value)} onBlur={() => onCommit && onCommit(val)} placeholder={placeholder} rows={rows}
-            style={{ ...RF, width: "100%", background: bg, color, border: `1.5px solid ${border}`, borderRadius: 12, padding: `13px 14px 13px ${icon ? 44 : 14}px`, outline: "none", fontSize: 14, resize: "vertical", boxSizing: "border-box", minHeight: 80 }} />
+          <textarea
+            value={val}
+            onChange={(e) => {
+              setVal(e.target.value);
+              live(e.target.value);
+            }}
+            onBlur={() => commit(val)}
+            placeholder={placeholder}
+            rows={rows}
+            style={{ ...RF, width: "100%", background: bg, color, border: `1.5px solid ${border}`, borderRadius: 12, padding: `13px 14px 13px ${icon ? 44 : 14}px`, outline: "none", fontSize: 14, resize: "vertical", boxSizing: "border-box", minHeight: 80 }}
+          />
         ) : (
-          <input type={type} value={val} onChange={(e) => setVal(e.target.value)} onBlur={() => onCommit && onCommit(val)} placeholder={placeholder}
-            style={{ ...RF, width: "100%", background: bg, color, border: `1.5px solid ${border}`, borderRadius: 12, padding: `13px 14px 13px ${icon ? 44 : 14}px`, outline: "none", fontSize: 14, boxSizing: "border-box" }} />
+          <input
+            type={type}
+            value={val}
+            onChange={(e) => {
+              setVal(e.target.value);
+              live(e.target.value);
+            }}
+            onBlur={() => commit(val)}
+            placeholder={placeholder}
+            style={{ ...RF, width: "100%", background: bg, color, border: `1.5px solid ${border}`, borderRadius: 12, padding: `13px 14px 13px ${icon ? 44 : 14}px`, outline: "none", fontSize: 14, boxSizing: "border-box" }}
+          />
         )}
       </div>
     </div>
@@ -934,27 +966,257 @@ function ClientAppPlatform({ orders, setOrders }) {
 }
 
 /* ═══════════════ LIVREUR APP (mobile 480px) ═══════════════ */
+function LivreurOrderTicket({ d, mode, onAccept, onReject, onOpenDetail }) {
+  const pending = mode === "pending";
+  const idShort = String(d.order_id ?? d.id ?? "").slice(-6).toUpperCase();
+  const created = d.order_created_at ? new Date(d.order_created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
+  const items = d.order_items && d.order_items.length ? d.order_items : [];
+  return (
+    <div
+      style={{
+        ...RF,
+        background: COLORS.cardDark,
+        border: pending ? `1.5px solid ${COLORS.primary}` : `1px solid ${COLORS.borderDark}`,
+        borderRadius: 16,
+        padding: 14,
+        marginBottom: 10,
+        boxShadow: pending ? "0 0 18px rgba(255,107,0,0.12)" : "none",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+        <span style={{ fontSize: 10, fontWeight: 800, color: COLORS.primary, letterSpacing: "0.08em" }}>#{idShort}</span>
+        <span style={{ fontSize: 10, color: COLORS.textMuted }}>{created}</span>
+      </div>
+      <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 4, fontWeight: 600 }}>COMMANDE</div>
+      <div style={{ marginBottom: 10 }}>
+        {items.length === 0 ? (
+          <div style={{ fontSize: 13, color: COLORS.textMuted }}>Détails commande #{d.order_id}</div>
+        ) : (
+          items.map((p, i) => (
+            <div key={`${p.name}-${i}`} style={{ fontSize: 13, color: COLORS.textDark, fontWeight: 600 }}>
+              {p.qty}× {p.name}
+            </div>
+          ))
+        )}
+      </div>
+      <div style={{ padding: "10px 12px", background: COLORS.surfaceDark, borderRadius: 10, marginBottom: 10 }}>
+        <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 4, fontWeight: 600 }}>LIVRER À / POINT</div>
+        <div style={{ fontSize: 12, color: COLORS.textDark, fontWeight: 600 }}>{d.client_username || "Client"}</div>
+        <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>{d.branch_name ? `🏪 ${d.branch_name}` : ""} {d.pickup_address ? `· ${d.pickup_address.slice(0, 48)}` : ""}</div>
+        {(d.client_lat != null && d.client_lng != null) && (
+          <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 4 }}>📍 GPS client · {Number(d.client_lat).toFixed(4)}, {Number(d.client_lng).toFixed(4)}</div>
+        )}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: pending || mode === "active" ? 12 : 0 }}>
+        <div style={{ background: COLORS.surfaceDark, borderRadius: 10, padding: "8px 6px", textAlign: "center" }}>
+          <div style={{ fontSize: 9, color: COLORS.textMuted }}>Livraison</div>
+          <div style={{ fontSize: 14, fontWeight: 900, color: COLORS.green }}>{eur(d.delivery_fee ?? 0)}</div>
+        </div>
+        <div style={{ background: COLORS.surfaceDark, borderRadius: 10, padding: "8px 6px", textAlign: "center" }}>
+          <div style={{ fontSize: 9, color: COLORS.textMuted }}>Temps</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: COLORS.textDark }}>{d.eta_label || "25–35 min"}</div>
+        </div>
+        <div style={{ background: COLORS.surfaceDark, borderRadius: 10, padding: "8px 6px", textAlign: "center" }}>
+          <div style={{ fontSize: 9, color: COLORS.textMuted }}>Total</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: COLORS.textDark }}>{eur(d.order_total ?? 0)}</div>
+        </div>
+      </div>
+      {pending && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <button type="button" onClick={onReject} style={{ ...RF, background: "rgba(239,68,68,0.12)", border: `1.5px solid ${COLORS.red}`, borderRadius: 12, padding: "10px", fontSize: 12, fontWeight: 800, color: COLORS.red, cursor: "pointer" }}>Refuser</button>
+          <button type="button" onClick={onAccept} style={{ ...RF, background: COLORS.green, border: "none", borderRadius: 12, padding: "10px", fontSize: 12, fontWeight: 800, color: "#fff", cursor: "pointer" }}>Accepter</button>
+        </div>
+      )}
+      {mode === "active" && (
+        <Btn size="sm" variant="ghost" full style={{ marginTop: 4 }} onClick={onOpenDetail}>Itinéraire & statut 🗺️</Btn>
+      )}
+      {mode === "done" && d.delivered_at && (
+        <div style={{ background: "rgba(34,197,94,0.1)", border: `1px solid ${COLORS.green}`, borderRadius: 8, padding: "6px 10px", textAlign: "center", fontSize: 11, fontWeight: 700, color: COLORS.green }}>
+          Livré · {formatFrDateTime(d.delivered_at)}
+        </div>
+      )}
+      {mode === "rejected" && (
+        <div style={{ background: "rgba(239,68,68,0.08)", border: `1px solid ${COLORS.red}`, borderRadius: 8, padding: "6px 10px", textAlign: "center", fontSize: 11, fontWeight: 700, color: COLORS.red }}>
+          Rejetée
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LivreurAppPlatform({ initialScreen = "login", onBackToLanding }) {
   const [screen, setScreen] = useState(initialScreen);
   const [online, setOnline] = useState(false);
-  const [onboardStep, setOnboardStep] = useState(1);
-  const [delStep, setDelStep] = useState(0);
   const [livTab, setLivTab] = useState("encours");
   const [lemail, setLemail] = useState("");
   const [lpass, setLpass] = useState("");
+  const [livShowPass, setLivShowPass] = useState(false);
+  const [livAuthErr, setLivAuthErr] = useState("");
+  const [rider, setRider] = useState(null);
+  const [deliveries, setDeliveries] = useState([]);
+  const [activeDelivery, setActiveDelivery] = useState(null);
+  const [todayStats, setTodayStats] = useState({ livraisons: 0, gains: 0, note: "5.0" });
+  const [incoming, setIncoming] = useState(null);
+  const [countdown, setCountdown] = useState(60);
+  const [wsEvent, setWsEvent] = useState("");
+  const [weekStats, setWeekStats] = useState([]);
+  const [monthStats, setMonthStats] = useState({ total: 0, livraisons: 0, gross: 0, commission: 12 });
+  const [notifications, setNotifications] = useState([]);
+  const wsRef = useRef(null);
+  const gpsRef = useRef(null);
   const go = (s) => setScreen(s);
-  const showLivNav = !["login", "onboard"].includes(screen);
+  const showLivNav = !["login"].includes(screen);
+
+  const loadOrders = async () => {
+    try {
+      const rows = await api("/driver/orders");
+      setDeliveries(rows || []);
+      setActiveDelivery((prev) => {
+        const list = rows || [];
+        if (prev?.id) {
+          const updated = list.find((x) => x.id === prev.id);
+          if (updated) return updated;
+        }
+        return list.find((d) => ["accepted", "picked_up", "searching"].includes(d.status)) || null;
+      });
+    } catch (_) {
+      setDeliveries([]);
+      setActiveDelivery(null);
+    }
+  };
+  const loadStats = async () => {
+    try {
+      const [today, week, month] = await Promise.all([
+        api("/driver/gains/today"),
+        api("/driver/gains/week"),
+        api("/driver/gains/month"),
+      ]);
+      setTodayStats({ livraisons: today?.livraisons || 0, gains: today?.gains || 0, note: String(today?.note || "4.8") });
+      setWeekStats(week?.jours || []);
+      setMonthStats(month || { total: 0, livraisons: 0, gross: 0, commission: 12 });
+    } catch (_) {
+      setTodayStats({ livraisons: 0, gains: 0, note: "5.0" });
+      setWeekStats([]);
+      setMonthStats({ total: 0, livraisons: 0, gross: 0, commission: 12 });
+    }
+  };
+  const loadNotifications = async () => {
+    try {
+      const rows = await api("/driver/notifications");
+      setNotifications(rows || []);
+    } catch (_) {
+      setNotifications([]);
+    }
+  };
+  const connectWs = (deliveryId) => {
+    if (!deliveryId) return;
+    if (wsRef.current) wsRef.current.close();
+    const proto = window.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${proto}://${window.location.host}/ws/tracking/${deliveryId}/`);
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        setWsEvent(msg.event || "update");
+        loadOrders();
+      } catch (_) {}
+    };
+    wsRef.current = ws;
+  };
+  const startGps = () => {
+    if (!activeDelivery) return;
+    if (!navigator.geolocation) return;
+    if (gpsRef.current) navigator.geolocation.clearWatch(gpsRef.current);
+    gpsRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        api("/driver/update-location", {
+          method: "POST",
+          body: JSON.stringify({
+            delivery_id: activeDelivery.id,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          }),
+        }).catch(() => {});
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+    );
+  };
+
+  useEffect(() => {
+    if (screen === "login") return;
+    loadOrders();
+    loadStats();
+    loadNotifications();
+    const poll = setInterval(() => {
+      loadOrders();
+      loadStats();
+      loadNotifications();
+    }, 7000);
+    return () => clearInterval(poll);
+  }, [screen]);
+  useEffect(() => {
+    if (!incoming) return undefined;
+    if (countdown <= 0) {
+      setIncoming(null);
+      setCountdown(60);
+      return undefined;
+    }
+    const t = setTimeout(() => setCountdown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [incoming, countdown]);
+  useEffect(() => {
+    if (activeDelivery?.id) {
+      connectWs(activeDelivery.id);
+      if (online) startGps();
+    }
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+      if (gpsRef.current) navigator.geolocation.clearWatch(gpsRef.current);
+    };
+  }, [activeDelivery?.id, online]);
+  useEffect(() => {
+    const candidate = deliveries.find((d) => d.status === "searching");
+    if (candidate && !activeDelivery) {
+      setIncoming(candidate);
+      setCountdown(60);
+    }
+  }, [deliveries, activeDelivery]);
+
+  const acceptDelivery = async (deliveryId) => {
+    await api("/driver/accept", { method: "POST", body: JSON.stringify({ delivery_id: deliveryId }) });
+    setIncoming(null);
+    setCountdown(60);
+    await loadOrders();
+    go("detail");
+  };
+  const rejectDelivery = async (deliveryId) => {
+    await api("/driver/reject", { method: "POST", body: JSON.stringify({ delivery_id: deliveryId }) });
+    setIncoming(null);
+    setCountdown(60);
+    await loadOrders();
+  };
+  const completeDelivery = async (deliveryId) => {
+    await api("/driver/complete", { method: "POST", body: JSON.stringify({ delivery_id: deliveryId }) });
+    await loadOrders();
+    await loadStats();
+    go("app");
+  };
+  const setDeliveryStatus = async (deliveryId, status) => {
+    await api("/driver/status", { method: "PUT", body: JSON.stringify({ delivery_id: deliveryId, status }) });
+    await loadOrders();
+  };
 
   const Shell = ({ children }) => (
     <div style={{ ...RF, minHeight: "100vh", background: COLORS.bgDark, display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ width: "100%", maxWidth: 480, flex: 1, position: "relative", display: "flex", flexDirection: "column" }}>
         {children}
         {showLivNav && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", padding: "10px 8px", background: COLORS.surfaceDark, borderTop: `1px solid ${COLORS.borderDark}` }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", padding: "10px 8px", background: COLORS.surfaceDark, borderTop: `1px solid ${COLORS.borderDark}` }}>
             {[
               ["app", "🏠", "Accueil"],
               ["livraisons", "📦", "Livraisons"],
               ["gains", "💰", "Gains"],
+              ["notif", "🔔", "Notifs"],
               ["lprof", "👤", "Profil"],
             ].map(([k, ic, lb]) => (
               <button key={k} type="button" onClick={() => go(k)} style={{ ...RF, border: "none", background: "none", color: screen === k ? COLORS.primary : COLORS.textMuted, fontSize: 10, fontWeight: 700, cursor: "pointer" }}>{ic}<div>{lb}</div></button>
@@ -984,26 +1246,53 @@ function LivreurAppPlatform({ initialScreen = "login", onBackToLanding }) {
 
   if (screen === "login") return (
     <Shell>
-      <div style={{ flex: 1, padding: 24, background: `radial-gradient(circle at 50% 0%, ${COLORS.primaryGlow}, transparent 50%)`, display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <div style={{ fontSize: 64, marginTop: 40 }}>🛵</div>
-        <h1 style={{ color: COLORS.textDark, fontWeight: 900, fontSize: 26 }}>Livreur Swift</h1>
-        <p style={{ color: COLORS.textMuted }}>Connectez-vous pour démarrer</p>
-        <div style={{ width: "100%", marginTop: 24 }}><Input icon="✉️" placeholder="Email" value={lemail} onCommit={setLemail} /><Input icon="🔒" type="password" placeholder="Mot de passe" value={lpass} onCommit={setLpass} /></div>
-        <Btn full style={{ marginTop: 8 }} onClick={() => setScreen("app")}>Connexion</Btn>
-        <button type="button" onClick={() => go("onboard")} style={{ ...RF, marginTop: 16, border: "none", background: "none", color: COLORS.primary, cursor: "pointer" }}>Pas encore livreur ? Rejoindre Swift</button>
-      </div>
-    </Shell>
-  );
-
-  if (screen === "onboard") return (
-    <Shell>
-      <div style={{ padding: 20 }}>
-        <ProgressBar pct={(onboardStep / 5) * 100} />
-        <h2 style={{ color: COLORS.textDark, fontWeight: 900 }}>Étape {onboardStep}/5</h2>
-        {onboardStep === 5 ? <Card dark style={{ padding: 20, marginTop: 16 }}><p>Votre dossier est en cours de validation. Email sous 24h.</p><Btn full onClick={() => go("login")}>OK</Btn></Card> : <>
-          <Input placeholder="Prénom" initialValue="" onCommit={() => { }} />
-          <Btn full onClick={() => setOnboardStep((s) => s + 1)}>Suivant</Btn>
-        </>}
+      <div style={{ flex: 1, width: "100%", padding: "24px 20px 32px", background: COLORS.bgDark, display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ fontSize: 56, marginTop: 28 }}>⚡</div>
+        <div style={{ ...RF, color: COLORS.primary, fontWeight: 900, fontSize: 14, letterSpacing: "0.12em", marginTop: 8 }}>SWIFT</div>
+        <Card dark style={{ width: "100%", maxWidth: 460, padding: "28px 24px 24px", marginTop: 20, borderRadius: 24, border: `1px solid ${COLORS.borderDark}` }}>
+          <h1 style={{ ...RF, color: COLORS.textDark, fontWeight: 900, fontSize: 26, margin: 0, textAlign: "center" }}>Espace Livreur 🛵</h1>
+          <p style={{ ...RF, color: COLORS.textMuted, fontSize: 14, textAlign: "center", marginTop: 8, marginBottom: 20 }}>Connectez-vous pour recevoir des commandes</p>
+          {livAuthErr ? <div style={{ ...RF, color: COLORS.red, fontSize: 13, marginBottom: 12, textAlign: "center", fontWeight: 600 }}>{livAuthErr}</div> : null}
+          <Input icon="✉️" placeholder="Identifiant ou email" initialValue={lemail} onLive={(v) => { setLemail(v); setLivAuthErr(""); }} onCommit={setLemail} />
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Input icon="🔒" type={livShowPass ? "text" : "password"} placeholder="Mot de passe" initialValue={lpass} onLive={(v) => { setLpass(v); setLivAuthErr(""); }} onCommit={setLpass} />
+            </div>
+            <button type="button" onClick={() => setLivShowPass((s) => !s)} style={{ ...RF, flexShrink: 0, width: 44, height: 44, borderRadius: 12, border: `1px solid ${COLORS.borderDark}`, background: COLORS.surfaceDark, cursor: "pointer", fontSize: 18, marginBottom: 16 }} aria-label="Afficher le mot de passe">{livShowPass ? "🙈" : "👁"}</button>
+          </div>
+          <Btn
+            full
+            style={{ marginTop: 4, fontWeight: 800, fontSize: 15 }}
+            onClick={async () => {
+              setLivAuthErr("");
+              try {
+                await api("/login", { method: "POST", body: JSON.stringify({ username: lemail, password: lpass }) });
+                const me = await api("/me");
+                if (me.role !== "delivery") {
+                  setLivAuthErr("Ce compte n'est pas un livreur Swift.");
+                  try { await api("/logout", { method: "POST", body: JSON.stringify({}) }); } catch (_) {}
+                  return;
+                }
+                if (me.is_active === false) {
+                  setLivAuthErr("Compte en attente de validation.");
+                  try { await api("/logout", { method: "POST", body: JSON.stringify({}) }); } catch (_) {}
+                  return;
+                }
+                setRider(me);
+                setOnline(true);
+                await loadOrders();
+                await loadStats();
+                setScreen("app");
+              } catch (e) {
+                setLivAuthErr(e.message || "Identifiants incorrects.");
+              }
+            }}
+          >
+            Se connecter
+          </Btn>
+          <button type="button" style={{ ...RF, marginTop: 20, border: "none", background: "none", color: COLORS.primary, cursor: "pointer", width: "100%", fontWeight: 600, fontSize: 13 }}>Pas encore livreur ? Rejoindre Swift →</button>
+        </Card>
+        <button type="button" onClick={() => go("app")} style={{ ...RF, marginTop: 20, border: "none", background: "none", color: COLORS.textMuted, cursor: "pointer", fontSize: 12 }}>Mode démo livreur</button>
       </div>
     </Shell>
   );
@@ -1012,7 +1301,15 @@ function LivreurAppPlatform({ initialScreen = "login", onBackToLanding }) {
     <Shell>
       <div style={{ padding: 16, flex: 1 }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>{["encours", "done", "cancel"].map((t) => <Btn key={t} size="sm" variant={livTab === t ? "primary" : "ghost"} onClick={() => setLivTab(t)}>{t === "encours" ? "En cours" : t === "done" ? "Terminées" : "Annulées"}</Btn>)}</div>
-        <Card dark style={{ padding: 16 }}><div style={{ fontWeight: 800 }}>Burger Palace → Maarif</div><div style={{ color: COLORS.green, fontWeight: 900 }}>+ 24 MAD</div></Card>
+        {deliveries.filter((d) => (livTab === "encours" ? ["searching", "accepted", "picked_up"].includes(d.status) : livTab === "done" ? d.status === "delivered" : d.status === "rejected")).length === 0 ? (
+          <Card dark style={{ padding: 18, color: COLORS.textMuted }}>Aucune livraison</Card>
+        ) : deliveries.filter((d) => (livTab === "encours" ? ["searching", "accepted", "picked_up"].includes(d.status) : livTab === "done" ? d.status === "delivered" : d.status === "rejected")).map((d) => (
+          <Card key={d.id} dark style={{ padding: 16, marginTop: 10 }}>
+            <div style={{ fontWeight: 800 }}>Commande #{d.order_id}</div>
+            <div style={{ color: COLORS.textMuted, fontSize: 12 }}>Statut: {d.status}</div>
+            {d.status === "accepted" && <Btn size="sm" variant="success" style={{ marginTop: 10 }} onClick={() => go("detail")}>Ouvrir</Btn>}
+          </Card>
+        ))}
       </div>
     </Shell>
   );
@@ -1020,9 +1317,66 @@ function LivreurAppPlatform({ initialScreen = "login", onBackToLanding }) {
   if (screen === "detail") return (
     <Shell>
       <div style={{ padding: 16 }}>
-        <ProgressBar pct={(delStep + 1) * 25} />
-        {["Aller chercher", "Récupérer", "Livrer", "Terminé"][delStep]}
-        <Btn full style={{ marginTop: 16 }} onClick={() => delStep < 3 ? setDelStep(delStep + 1) : go("app")}>Continuer</Btn>
+        {!activeDelivery ? (
+          <Card dark style={{ padding: 18, color: COLORS.textMuted }}>Aucune commande active</Card>
+        ) : (
+          <>
+            <div style={{ color: COLORS.textDark, fontWeight: 900, fontSize: 20 }}>Livraison #{activeDelivery.order_id}</div>
+            <Card dark style={{ padding: 16, marginTop: 12 }}>
+              <div style={{ color: COLORS.textMuted, marginBottom: 8 }}>Statut actuel: {activeDelivery.status}</div>
+              <div style={{ color: COLORS.textMuted }}>Latitude: {activeDelivery.current_lat ?? "-"}</div>
+              <div style={{ color: COLORS.textMuted }}>Longitude: {activeDelivery.current_lng ?? "-"}</div>
+              {wsEvent && <Badge variant="info" style={{ marginTop: 8 }}>Live: {wsEvent}</Badge>}
+            </Card>
+            <Card dark style={{ padding: 14, marginTop: 10 }}>
+              <div style={{ color: COLORS.textDark, fontWeight: 800, marginBottom: 10 }}>Timeline livraison</div>
+              {[
+                ["accepted", "1) Commande acceptée", activeDelivery.accepted_at],
+                ["picked_up", "2) Commande récupérée", activeDelivery.picked_up_at],
+                ["delivered", "3) Commande livrée", activeDelivery.delivered_at],
+              ].map(([key, label, ts]) => {
+                const done = key === "accepted"
+                  ? ["accepted", "picked_up", "delivered"].includes(activeDelivery.status)
+                  : key === "picked_up"
+                    ? ["picked_up", "delivered"].includes(activeDelivery.status)
+                    : activeDelivery.status === "delivered";
+                return (
+                  <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <span style={{ ...RF, color: done ? COLORS.green : COLORS.textMuted, fontSize: 13, fontWeight: done ? 700 : 500 }}>
+                      {done ? "✅" : "⭕"} {label}
+                    </span>
+                    <span style={{ ...RF, fontSize: 11, color: done && ts ? COLORS.textDark : COLORS.textMuted, fontWeight: 600, whiteSpace: "nowrap" }}>
+                      {done && ts ? formatFrDateTime(ts) : "—"}
+                    </span>
+                  </div>
+                );
+              })}
+            </Card>
+            <div style={{ marginTop: 12, borderRadius: 14, overflow: "hidden", border: `1px solid ${COLORS.borderDark}` }}>
+              <iframe
+                title="map"
+                width="100%"
+                height="220"
+                style={{ border: 0, display: "block" }}
+                src={(() => {
+                  const alat = activeDelivery.current_lat ?? activeDelivery.client_lat ?? 33.59;
+                  const alng = activeDelivery.current_lng ?? activeDelivery.client_lng ?? -7.62;
+                  const ptsLat = [alat, activeDelivery.branch_lat].filter((x) => x != null && !Number.isNaN(Number(x)));
+                  const ptsLng = [alng, activeDelivery.branch_lng].filter((x) => x != null && !Number.isNaN(Number(x)));
+                  const pad = 0.012;
+                  const minLat = Math.min(...ptsLat) - pad;
+                  const maxLat = Math.max(...ptsLat) + pad;
+                  const minLng = Math.min(...ptsLng) - pad;
+                  const maxLng = Math.max(...ptsLng) + pad;
+                  return `https://www.openstreetmap.org/export/embed.html?bbox=${minLng}%2C${minLat}%2C${maxLng}%2C${maxLat}&layer=mapnik&marker=${alat}%2C${alng}`;
+                })()}
+              />
+            </div>
+            {activeDelivery.status === "accepted" && <Btn full variant="outline" style={{ marginTop: 12 }} onClick={() => setDeliveryStatus(activeDelivery.id, "picked_up")}>Commande récupérée ✅</Btn>}
+            {["accepted", "picked_up"].includes(activeDelivery.status) && <Btn full variant="success" style={{ marginTop: 8 }} onClick={() => completeDelivery(activeDelivery.id)}>Marquer comme livré ✅</Btn>}
+            <Btn full variant="ghost" style={{ marginTop: 8 }} onClick={() => go("app")}>Retour</Btn>
+          </>
+        )}
       </div>
     </Shell>
   );
@@ -1030,8 +1384,28 @@ function LivreurAppPlatform({ initialScreen = "login", onBackToLanding }) {
   if (screen === "gains") return (
     <Shell>
       <div style={{ padding: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>{[["Auj.", "86 €"], ["Sem.", "412 €"], ["Mois", "1840 €"]].map(([a, b]) => <StatCard key={a} dark value={b} label={a} />)}</div>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 120, marginTop: 24 }}>{[40, 55, 30, 70, 45, 90, 60].map((h, i) => <div key={i} style={{ flex: 1, height: `${h}%`, background: i === 5 ? COLORS.primary : COLORS.cardDark, borderRadius: 6 }} />)}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+          <StatCard dark value={`${todayStats.gains.toFixed(0)} €`} label="Auj." />
+          <StatCard dark value={`${todayStats.livraisons}`} label="Livraisons" />
+          <StatCard dark value={todayStats.note} label="Note" />
+        </div>
+        {todayStats.livraisons === 0 ? (
+          <Card dark style={{ marginTop: 16, padding: 20, textAlign: "center", color: COLORS.textMuted }}>
+            💰 Aucun gain. Vos gains apparaitront apres votre premiere livraison.
+          </Card>
+        ) : (
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 120, marginTop: 24 }}>
+            {(weekStats.length ? weekStats : [{ jour: "Lun", montant: 0 }, { jour: "Mar", montant: 0 }, { jour: "Mer", montant: 0 }, { jour: "Jeu", montant: 0 }, { jour: "Ven", montant: 0 }, { jour: "Sam", montant: 0 }, { jour: "Dim", montant: 0 }]).map((d, i, arr) => {
+              const max = Math.max(...arr.map((x) => x.montant || 0), 1);
+              const h = Math.max(((d.montant || 0) / max) * 100, 4);
+              return <div key={`${d.jour}-${i}`} style={{ flex: 1, height: `${h}%`, background: d.isToday ? COLORS.primary : COLORS.cardDark, borderRadius: 6 }} title={`${d.jour}: ${d.montant || 0}€`} />;
+            })}
+          </div>
+        )}
+        <Card dark style={{ marginTop: 16, padding: 16 }}>
+          <div style={{ color: COLORS.textDark, fontWeight: 800 }}>Ce mois</div>
+          <div style={{ color: COLORS.textMuted, fontSize: 13, marginTop: 4 }}>{monthStats.livraisons} livraisons · Brut {monthStats.gross}€ · Net {monthStats.total}€</div>
+        </Card>
       </div>
     </Shell>
   );
@@ -1039,32 +1413,117 @@ function LivreurAppPlatform({ initialScreen = "login", onBackToLanding }) {
   if (screen === "lprof") return (
     <Shell>
       <div style={{ padding: 16 }}>
-        <Card dark style={{ padding: 20, borderTop: `4px solid ${COLORS.primary}` }}><div style={{ fontWeight: 900, fontSize: 20 }}>Rachid Mansouri</div><div style={{ color: COLORS.yellow }}>★ 4,8</div></Card>
-        <Btn full variant="danger" style={{ marginTop: 24 }} onClick={() => go("login")}>Déconnexion</Btn>
+        <Card dark style={{ padding: 20, borderTop: `4px solid ${COLORS.primary}` }}>
+          <div style={{ fontWeight: 900, fontSize: 20 }}>{rider?.username || "Livreur"}</div>
+          <div style={{ color: COLORS.yellow }}>★ {todayStats.note}</div>
+          <div style={{ color: COLORS.textMuted, marginTop: 8 }}>Statut: {online ? "En ligne" : "Hors ligne"}</div>
+        </Card>
+        <Btn full variant="danger" style={{ marginTop: 24 }} onClick={async () => { try { await api("/logout", { method: "POST", body: JSON.stringify({}) }); } catch (_) {} go("login"); }}>Déconnexion</Btn>
       </div>
     </Shell>
   );
 
-  if (screen === "notif") return <Shell><div style={{ padding: 16 }}><Card dark style={{ padding: 16 }}>Nouvelle commande — Accepter ?</Card></div></Shell>;
+  if (screen === "notif") return (
+    <Shell>
+      <div style={{ padding: 16, flex: 1 }}>
+        <div style={{ color: COLORS.textDark, fontWeight: 900, fontSize: 20, marginBottom: 12 }}>Notifications</div>
+        {!notifications.length ? (
+          <Card dark style={{ padding: 20, color: COLORS.textMuted, textAlign: "center" }}>Aucune notification</Card>
+        ) : notifications.map((n) => (
+          <Card key={n.id} dark onClick={async () => {
+            if (!n.is_read) {
+              try { await api(`/driver/notifications/${n.id}/read`, { method: "PUT", body: JSON.stringify({}) }); } catch (_) {}
+              setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)));
+            }
+          }} style={{ padding: 14, marginBottom: 10, border: n.is_read ? `1px solid ${COLORS.borderDark}` : `1px solid ${COLORS.primary}`, cursor: "pointer" }}>
+            <div style={{ color: COLORS.textDark, fontSize: 14 }}>{n.message}</div>
+            <div style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 4 }}>{new Date(n.created_at).toLocaleString("fr-FR")}</div>
+          </Card>
+        ))}
+      </div>
+    </Shell>
+  );
 
-  /* app home */
+  /* app home — dashboard 3 colonnes (en cours · livrées · rejetées) */
+  const colEncours = deliveries.filter((d) => ["searching", "accepted", "picked_up"].includes(d.status));
+  const colLivrees = deliveries.filter((d) => d.status === "delivered");
+  const colRejet = deliveries.filter((d) => d.status === "rejected");
+  const riderHeader = rider?.username || rider?.email || "Livreur";
+
   return (
     <Shell>
       <div style={{ flex: 1, overflow: "auto", padding: 16 }}>
-        <Card style={{ padding: 20, background: "linear-gradient(135deg,#FF6B00,#FF3500)", border: "none", color: COLORS.white }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0 12px", borderBottom: `1px solid ${COLORS.borderDark}` }}>
+          <div style={{ ...RF, fontWeight: 900, fontSize: 16, color: COLORS.primary }}>⚡ Swift Livreur</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: online ? COLORS.green : COLORS.textMuted }} />
+            <span style={{ ...RF, fontSize: 12, color: COLORS.textDark, fontWeight: 700 }}>{riderHeader}{online ? " · En ligne" : ""}</span>
+          </div>
+        </div>
+        <Card style={{ padding: 20, background: "linear-gradient(135deg,#FF6B00,#FF3500)", border: "none", color: COLORS.white, marginTop: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontWeight: 800 }}>{online ? "En ligne · Disponible" : "Hors ligne"}</span>
+            <span style={{ fontWeight: 800 }}>{online ? "Réception des commandes activée" : "Hors ligne"}</span>
             <Toggle wide on={online} onToggle={setOnline} />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", marginTop: 16, fontSize: 12 }}><div>📦 12</div><div>💰 86 €</div><div>⭐ 4,8</div></div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", marginTop: 16, fontSize: 12 }}><div>📦 {todayStats.livraisons}</div><div>💰 {todayStats.gains.toFixed(0)} €</div><div>⭐ {todayStats.note}</div></div>
         </Card>
-        <Card dark style={{ padding: 16, marginTop: 16, border: online ? `2px solid ${COLORS.green}` : undefined, animation: online ? "pulse 2s infinite" : undefined }}>
-          <div style={{ fontWeight: 800 }}>Commande #SW-9820</div>
-          <div style={{ fontSize: 13, color: COLORS.textMuted }}>PharmaCare → Client Maarif</div>
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Btn size="sm" variant="success">Accepter</Btn><Btn size="sm" variant="danger">Refuser</Btn></div>
-          <Btn size="sm" variant="ghost" style={{ marginTop: 8 }} onClick={() => go("detail")}>Détail livraison →</Btn>
-        </Card>
-        <Card dark style={{ padding: 40, marginTop: 16, textAlign: "center" }}><div style={{ fontSize: 48 }}>🗺️</div>Zone Casablanca</Card>
+        {incoming ? (
+          <Card dark style={{ padding: 16, marginTop: 16, border: `2px solid ${COLORS.warning}`, animation: "pulse 2s infinite" }}>
+            <div style={{ fontWeight: 900, color: COLORS.textDark }}>🔔 Nouvelle commande #{incoming.order_id}</div>
+            <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 4 }}>Accepter avant expiration</div>
+            <div style={{ color: countdown < 10 ? COLORS.red : COLORS.primary, fontWeight: 900, fontSize: 28, marginTop: 8 }}>{countdown}s</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <Btn size="sm" variant="success" onClick={() => acceptDelivery(incoming.id)}>Accepter ✅</Btn>
+              <Btn size="sm" variant="danger" onClick={() => rejectDelivery(incoming.id)}>Refuser ❌</Btn>
+            </div>
+          </Card>
+        ) : null}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, marginTop: 16 }}>
+          {[
+            { title: "En cours", icon: "🔔", list: colEncours, empty: "Aucune commande en cours", mode: "mix" },
+            { title: "Livrées", icon: "✅", list: colLivrees, empty: "Aucune livraison terminée", mode: "done" },
+            { title: "Rejetées", icon: "❌", list: colRejet, empty: "Aucune rejetée", mode: "rejected" },
+          ].map((col) => (
+            <div key={col.title} style={{ minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                <span style={{ ...RF, fontWeight: 800, fontSize: 11, color: COLORS.textDark }}>{col.icon}</span>
+                <span style={{ ...RF, fontWeight: 800, fontSize: 11, color: COLORS.textDark }}>{col.title}</span>
+                {col.list.length > 0 && <span style={{ ...RF, background: COLORS.primary, color: "#fff", borderRadius: 50, padding: "1px 7px", fontSize: 9, fontWeight: 900 }}>{col.list.length}</span>}
+              </div>
+              <div style={{ maxHeight: 340, overflowY: "auto", paddingRight: 2 }}>
+                {col.list.length === 0 ? (
+                  <div style={{ ...RF, fontSize: 10, color: COLORS.textMuted, padding: "12px 8px", textAlign: "center", background: COLORS.surfaceDark, borderRadius: 12, border: `1px dashed ${COLORS.borderDark}` }}>{col.empty}</div>
+                ) : (
+                  col.list.map((d) => {
+                    if (col.mode === "mix") {
+                      if (d.status === "searching") {
+                        return (
+                          <LivreurOrderTicket
+                            key={d.id}
+                            d={d}
+                            mode="pending"
+                            onAccept={() => acceptDelivery(d.id)}
+                            onReject={() => rejectDelivery(d.id)}
+                          />
+                        );
+                      }
+                      return (
+                        <LivreurOrderTicket
+                          key={d.id}
+                          d={d}
+                          mode="active"
+                          onOpenDetail={() => { setActiveDelivery(d); go("detail"); }}
+                        />
+                      );
+                    }
+                    if (col.mode === "done") return <LivreurOrderTicket key={d.id} d={d} mode="done" />;
+                    return <LivreurOrderTicket key={d.id} d={d} mode="rejected" />;
+                  })
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </Shell>
   );
