@@ -1,0 +1,40 @@
+{% extends "entreprise/base_entreprise.html" %}
+{% block title %}Catalogue — Swift{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;
+            align-items:center;margin-bottom:24px;">
+  <div class="page-title">🛒 Catalogue produits</div>
+  <button class="btn-orange" type="button">+ Ajouter un produit</button>
+</div>
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Produit</th><th>Prix</th><th>Disponible</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="font-weight:600;">🍔 Burger Classic</td>
+        <td>8.50 €</td>
+        <td><span class="badge badge-livree">Oui</span></td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">🍟 Frites maison</td>
+        <td>3.00 €</td>
+        <td><span class="badge badge-livree">Oui</span></td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">🥤 Boisson</td>
+        <td>2.50 €</td>
+        <td><span class="badge badge-livree">Oui</span></td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">🍰 Dessert du jour</td>
+        <td>4.00 €</td>
+        <td><span class="badge badge-annulee">Non</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

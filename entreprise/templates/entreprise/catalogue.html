@@ -1,0 +1,79 @@
+{% extends "entreprise/base_entreprise.html" %}
+{% load static %}
+{% block title %}Catalogue — Swift{% endblock %}
+{% block content %}
+<div class="page-catalogue">
+  <div class="page-catalogue-header">
+    <h2 class="page-heading">Catalogue produits</h2>
+    <button type="button" class="btn-orange" id="btn-ajouter-produit">+ Ajouter un produit</button>
+  </div>
+
+  <div class="catalogue-grid">
+    {% for p in produits %}
+    <article class="product-card" data-produit-id="{{ p.id }}">
+      <div class="product-img-wrap">
+        {% if p.image %}
+        <img src="{{ p.image.url }}" alt="" class="product-img">
+        {% else %}
+        <div class="product-img product-img-ph">📦</div>
+        {% endif %}
+      </div>
+      <div class="product-body">
+        <h3 class="product-name">{{ p.nom }}</h3>
+        <p class="product-cat">{{ p.categorie|default:"—" }}</p>
+        <p class="product-price">{{ p.prix }} MAD</p>
+        {% if p.disponible %}
+        <span class="badge badge-green">Disponible</span>
+        {% else %}
+        <span class="badge badge-red">Indisponible</span>
+        {% endif %}
+        <div class="product-actions">
+          <button type="button" class="btn-outline btn-edit" data-edit-id="{{ p.id }}">Modifier ✏️</button>
+          <form method="post" action="{% url 'supprimer_produit' id=p.id %}" class="inline-form del-form-js"
+                data-confirm="Supprimer ce produit ?">
+            {% csrf_token %}
+            <button type="submit" class="btn-outline btn-danger-outline">Supprimer 🗑️</button>
+          </form>
+        </div>
+      </div>
+    </article>
+    {% empty %}
+    <p class="cell-empty catalogue-empty">Aucun produit. Ajoutez votre premier article.</p>
+    {% endfor %}
+  </div>
+</div>
+
+{# Modal ajout / édition — soumission via fetch (ajax=1) #}
+<div id="modal-catalogue" class="modal-backdrop" style="display:none;" aria-hidden="true">
+  <div class="modal-dialog" role="dialog" aria-labelledby="modal-catalogue-title">
+    <button type="button" class="modal-close" id="modal-catalogue-close" aria-label="Fermer">×</button>
+    <h2 id="modal-catalogue-title" class="modal-title">Produit</h2>
+    <form id="form-catalogue-modal" class="modal-form"
+          data-url-ajouter="{% url 'ajouter_produit' %}"
+          data-url-modifier-template="{% url 'modifier_produit' id=0 %}"
+          data-produit-json-template="{% url 'produit_json' id=0 %}">
+      {% csrf_token %}
+      <input type="hidden" name="ajax" value="1">
+      <input type="hidden" name="produit_id" id="modal-produit-id" value="">
+      <label class="lbl">Nom</label>
+      {{ form.nom }}
+      <label class="lbl">Description</label>
+      {{ form.description }}
+      <label class="lbl">Prix (MAD)</label>
+      {{ form.prix }}
+      <label class="lbl">Catégorie</label>
+      {{ form.categorie }}
+      <label class="lbl">Image</label>
+      {{ form.image }}
+      <label class="lbl-row">
+        {{ form.disponible }} <span>Disponible</span>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn-muted" id="modal-btn-annuler">Annuler</button>
+        <button type="submit" class="btn-orange">Enregistrer</button>
+      </div>
+      <p id="modal-catalogue-error" class="field-error" style="display:none;"></p>
+    </form>
+  </div>
+</div>
+{% endblock %}

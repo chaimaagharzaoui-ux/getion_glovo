@@ -1,0 +1,25 @@
+{% extends "entreprise/base_entreprise.html" %}
+{% block title %}Finances — Swift{% endblock %}
+{% block content %}
+<div class="page-title" style="margin-bottom:24px;">
+  💰 Finances
+</div>
+<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+  <div class="stat-card">
+    <div class="stat-value">{{ ca_total|floatformat:2 }} €</div>
+    <div class="stat-label">CA total livré</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color:#EF4444;">
+      {{ frais }} €
+    </div>
+    <div class="stat-label">Frais plateforme (5%)</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color:#22C55E;">
+      {{ benefice }} €
+    </div>
+    <div class="stat-label">Bénéfice net</div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+  <div class="text-center mb-4">
+    <div style="color:#FF6B00;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;">CHOISISSEZ VOTRE RÔLE</div>
+    <h1 style="font-size:26px;font-weight:900;color:#1a1a1a;">Accédez à l'interface qui vous correspond</h1>
+  </div>
+  <div class="row g-3">
+    <div class="col-md-3">
+      <a href="#" class="text-decoration-none">
+        <div style="background:#fff;border:1px solid #eee;border-radius:16px;padding:24px;">
+          <div style="font-size:30px;">👤</div>
+          <div style="font-size:18px;font-weight:900;color:#1a1a1a;">Client</div>
+          <div style="font-size:13px;color:#888;">Commander et suivre vos livraisons</div>
+          <div style="margin-top:10px;color:#FF6B00;font-weight:800;">Accéder →</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="/api/livreurs/login/" class="text-decoration-none">
+        <div style="background:#fff;border:1px solid #eee;border-radius:16px;padding:24px;">
+          <div style="font-size:30px;">🛵</div>
+          <div style="font-size:18px;font-weight:900;color:#1a1a1a;">Livreur</div>
+          <div style="font-size:13px;color:#888;">Accepter et livrer les commandes</div>
+          <div style="margin-top:10px;color:#FF6B00;font-weight:800;">Accéder →</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="/entreprise/login/" class="text-decoration-none">
+        <div style="background:#fff;border:1px solid #eee;border-radius:16px;padding:24px;">
+          <div style="font-size:30px;">🏪</div>
+          <div style="font-size:18px;font-weight:900;color:#1a1a1a;">Entreprise</div>
+          <div style="font-size:13px;color:#888;">Gérer catalogue et commandes</div>
+          <div style="margin-top:10px;color:#FF6B00;font-weight:800;">Accéder →</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="/admin/" class="text-decoration-none">
+        <div style="background:#fff;border:1px solid #eee;border-radius:16px;padding:24px;">
+          <div style="font-size:30px;">⚙️</div>
+          <div style="font-size:18px;font-weight:900;color:#1a1a1a;">Admin</div>
+          <div style="font-size:13px;color:#888;">Superviser la plateforme Swift</div>
+          <div style="margin-top:10px;color:#FF6B00;font-weight:800;">Accéder →</div>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

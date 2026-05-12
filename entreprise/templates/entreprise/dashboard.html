@@ -1,0 +1,96 @@
+{% extends "entreprise/base_entreprise.html" %}
+{% block title %}Tableau de bord — Swift{% endblock %}
+{% block body_attrs %}data-api-stats-url="{% url 'api_stats' %}"{% endblock %}
+{% block content %}
+<div class="dashboard-layout">
+  <div class="dashboard-main">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="ca-value">{{ ca_jour }} MAD</div>
+        <div class="stat-label">CA aujourd'hui</div>
+        {% if variation_ca >= 0 %}
+        <span class="badge badge-green stat-delta">+{{ variation_ca }}% vs hier</span>
+        {% else %}
+        <span class="badge badge-red stat-delta">{{ variation_ca }}% vs hier</span>
+        {% endif %}
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="commandes-value">{{ nb_commandes }}</div>
+        <div class="stat-label">Commandes</div>
+        <div class="stat-sublabel stat-sublabel-green" id="en-cours-value">En cours : {{ en_cours }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="note-value">{{ note_moyenne }}</div>
+        <div class="stat-label">Note moyenne</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="temps-value">{{ temps_livraison_moyen }} min</div>
+        <div class="stat-label">Temps livraison</div>
+      </div>
+    </div>
+
+    <section class="panel panel-table">
+      <h2 class="panel-title">Commandes récentes</h2>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>N° commande</th>
+              <th>Nom client</th>
+              <th>Montant</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in dernieres_commandes %}
+            <tr>
+              <td>{{ c.numero }}</td>
+              <td>{{ c.client_nom }}</td>
+              <td>{{ c.montant }} MAD</td>
+              <td>
+                {% if c.statut == 'livree' %}
+                  <span class="badge badge-blue">{{ c.get_statut_display }}</span>
+                {% elif c.statut == 'en_livraison' %}
+                  <span class="badge badge-blue-light">{{ c.get_statut_display }}</span>
+                {% elif c.statut == 'en_preparation' %}
+                  <span class="badge badge-blue-dark">{{ c.get_statut_display }}</span>
+                {% elif c.statut == 'annulee' %}
+                  <span class="badge badge-gray">{{ c.get_statut_display }}</span>
+                {% else %}
+                  <span class="badge badge-orange">{{ c.get_statut_display }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="cell-empty">Aucune commande pour le moment.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="dashboard-aside">
+    <div class="panel panel-aside">
+      <h3 class="panel-aside-title">Ouvert / Fermé</h3>
+      <p class="panel-aside-desc">Visible par les clients sur Swift.</p>
+      <div class="toggle-row">
+        <button type="button"
+                id="toggle-ouverture"
+                class="toggle-track {% if not entreprise.est_ouvert %}off{% endif %}"
+                role="switch"
+                aria-checked="{{ entreprise.est_ouvert|yesno:'true,false' }}"
+                data-url="{% url 'toggle_ouverture' %}">
+          <span class="toggle-thumb"></span>
+        </button>
+        <span class="toggle-label" id="toggle-label">{% if entreprise.est_ouvert %}Ouvert{% else %}Fermé{% endif %}</span>
+      </div>
+    </div>
+    <div class="panel panel-aside">
+      <h3 class="panel-aside-title">Horaires</h3>
+      <p class="hours-line">{{ entreprise.horaire_ouverture|time:"H:i" }} – {{ entreprise.horaire_fermeture|time:"H:i" }}</p>
+      <p class="accept-line">Acceptation <strong>{{ entreprise.taux_acceptation|floatformat:0 }}%</strong></p>
+    </div>
+  </aside>
+</div>
+{% endblock %}

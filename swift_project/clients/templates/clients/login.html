@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion client — Swift</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; font-family:'Segoe UI', sans-serif; }
+  body {
+    min-height:100vh; background:#09090f; display:flex;
+    align-items:center; justify-content:center; padding:24px;
+    color:#f0f0fa;
+  }
+  .card {
+    background:#18181f; border:1px solid #26263a;
+    border-radius:24px; padding:36px; width:100%; max-width:420px;
+  }
+  .logo { text-align:center; font-size:22px; font-weight:900; color:#FF6B00; margin-bottom:8px; }
+  .subtitle { font-size:12px; color:#7777a0; text-align:center; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:20px; }
+  h1 { font-size:22px; font-weight:900; margin-bottom:6px; }
+  .hint { font-size:13px; color:#7777a0; margin-bottom:20px; }
+  label { display:block; font-size:11px; font-weight:800; color:#7777a0; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px; }
+  input {
+    width:100%; padding:12px 14px; border-radius:12px;
+    border:1px solid #26263a; background:#111118; color:#f0f0fa;
+    font-size:14px; margin-bottom:14px;
+  }
+  input:focus { outline:none; border-color:#00a082; }
+  .erreur { background:rgba(239,68,68,0.12); border:1px solid #ef4444; color:#ef4444;
+    border-radius:10px; padding:10px 12px; font-size:13px; margin-bottom:14px; }
+  .btn {
+    width:100%; border:none; border-radius:50px; padding:14px;
+    background:#FF6B00; color:#fff; font-size:15px; font-weight:800; cursor:pointer;
+  }
+  .btn:hover { opacity:0.92; }
+  .back { display:block; text-align:center; margin-top:16px; color:#FF6B00; text-decoration:none; font-size:14px; font-weight:700; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">⚡ Swift</div>
+  <div class="subtitle">Espace client</div>
+  <h1>Connexion</h1>
+  <p class="hint">Identifiez-vous avec l’email client, ou avec un compte Django lié dans l’admin.</p>
+  {% if erreur %}<div class="erreur">{{ erreur }}</div>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <label>Email ou identifiant</label>
+    <input type="text" name="email" required value="{{ request.POST.email|default:'' }}" autocomplete="username">
+    <label>Mot de passe</label>
+    <input type="password" name="mot_de_passe" required>
+    <button type="submit" class="btn">Se connecter</button>
+  </form>
+  <a class="back" href="{% url 'home' %}">← Retour accueil</a>
+</div>
+</body>
+</html>

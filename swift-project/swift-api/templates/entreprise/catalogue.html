@@ -1,0 +1,33 @@
+{% extends "entreprise/base_entreprise.html" %}
+{% block entreprise_content %}
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+  <h2 style="margin:0;font-size:24px;font-weight:900;">Catalogue</h2>
+</div>
+<div style="margin-top:14px;background:#fff;border:1px solid #eee;border-radius:16px;padding:16px;">
+  <form method="post" style="display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:8px;align-items:end;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <div><label>Nom</label><input name="nom" required style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;"></div>
+    <div><label>Prix</label><input name="prix" type="number" step="0.01" required style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;"></div>
+    <div><label>Categorie</label><input name="categorie" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;"></div>
+    <div><label>Description</label><input name="description" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;"></div>
+    <div><button style="width:100%;background:#FF6B00;color:#fff;border:none;border-radius:8px;padding:10px 12px;font-weight:700;">Ajouter</button></div>
+  </form>
+</div>
+<div style="margin-top:14px;display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px;">
+  {% for p in produits %}
+  <div style="background:#fff;border:1px solid #eee;border-radius:14px;padding:14px;">
+    <div style="font-size:17px;font-weight:800;">{{ p.nom }}</div>
+    <div style="font-size:13px;color:#777;">{{ p.categorie }}</div>
+    <div style="margin-top:8px;color:#FF6B00;font-size:20px;font-weight:900;">{{ p.prix }} MAD</div>
+    <div style="margin-top:8px;font-size:13px;color:#666;">{{ p.description|default:"-" }}</div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="toggle"><input type="hidden" name="produit_id" value="{{ p.id }}"><button style="border:none;border-radius:8px;padding:8px 10px;background:{% if p.disponible %}#16a34a{% else %}#9ca3af{% endif %};color:#fff;">{% if p.disponible %}Disponible{% else %}Indisponible{% endif %}</button></form>
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="produit_id" value="{{ p.id }}"><button style="border:none;border-radius:8px;padding:8px 10px;background:#ef4444;color:#fff;">Supprimer</button></form>
+    </div>
+  </div>
+  {% empty %}
+  <div style="color:#888;">Aucun produit.</div>
+  {% endfor %}
+</div>
+{% endblock %}

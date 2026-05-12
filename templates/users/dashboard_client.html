@@ -20,4 +20,33 @@
         <code>/order/track/&lt;id&gt;</code>
     </article>
 </section>
+{% if user.is_authenticated and user.role == 'client' %}
+<div id="delivery-notif" style="display:none;margin:16px 0;padding:14px 18px;border-radius:12px;background:#e8f5e9;border:1px solid #a5d6a7;font-weight:600;color:#1b5e20;">
+    Votre livreur est arrivé ! Commande livrée.
+</div>
+<script>
+(function () {
+  var uid = {{ user.id }};
+  var proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  var url = proto + "//" + window.location.host + "/ws/client/" + uid + "/";
+  function connect() {
+    var clientWs = new WebSocket(url);
+    clientWs.onmessage = function (e) {
+      try {
+        var data = JSON.parse(e.data);
+        if (data.type === "order_delivered") {
+          var el = document.getElementById("delivery-notif");
+          if (el) {
+            el.style.display = "block";
+            el.textContent = data.message || "Votre livreur est arrivé ! Commande livrée.";
+          }
+        }
+      } catch (err) {}
+    };
+    clientWs.onclose = function () { setTimeout(connect, 4000); };
+  }
+  connect();
+})();
+</script>
+{% endif %}
 {% endblock %}

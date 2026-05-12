@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -48,6 +49,8 @@ INSTALLED_APPS = [
     'payments',
     'notifications',
     'tracking',
+    'entreprise',
+    'driver',
 ]
 
 MIDDLEWARE = [
@@ -72,6 +75,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'entreprise.context_processors.entreprise_session',
+                'entreprise.context_processors.entreprise_ctx',
             ],
         },
     },
@@ -81,13 +86,24 @@ WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
 
-# Database
+# Database — MySQL via WAMP (icône verte → démarrer MySQL ; phpMyAdmin http://localhost/phpmyadmin/)
+# Créer la base : SQL « CREATE DATABASE swift_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; »
+# Mot de passe root WAMP : souvent vide au départ ; sinon le même que dans phpMyAdmin.
+# Surcharge optionnelle : MYSQL_DATABASE, MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST, MYSQL_PORT
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": os.environ.get("MYSQL_DATABASE", "swift_db"),
+        "USER": os.environ.get("MYSQL_USER", "root"),
+        "PASSWORD": os.environ.get("MYSQL_PASSWORD", ""),
+        "HOST": os.environ.get("MYSQL_HOST", "127.0.0.1"),
+        "PORT": os.environ.get("MYSQL_PORT", "3306"),
+        "OPTIONS": {
+            "charset": "utf8mb4",
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
 
@@ -129,6 +145,9 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 AUTH_USER_MODEL = 'users.User'
 
 REST_FRAMEWORK = {
@@ -146,3 +165,10 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
     }
 }
+
+# Swift — un seul compte administrateur « principal » (email imposé pour l’accès panneau Swift)
+# En production : définir SWIFT_PRINCIPAL_ADMIN_EMAIL et SWIFT_PRINCIPAL_ADMIN_INITIAL_PASSWORD dans l’environnement.
+SWIFT_PRINCIPAL_ADMIN_EMAIL = os.environ.get('SWIFT_PRINCIPAL_ADMIN_EMAIL', 'swift@gmail.com').strip()
+SWIFT_PRINCIPAL_ADMIN_INITIAL_PASSWORD = os.environ.get(
+    'SWIFT_PRINCIPAL_ADMIN_INITIAL_PASSWORD', 'swift@'
+)

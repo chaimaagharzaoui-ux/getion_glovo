@@ -4,22 +4,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Swift Demo</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Swift — Livraison express</title>
   <style>
     html, body, #root { margin: 0; width: 100%; min-height: 100%; }
   </style>
 </head>
 <body>
+  <form id="swift-csrf-source" style="display:none">{% csrf_token %}</form>
   <div id="root"></div>
 
+  <!-- Démo React (swift_app.jsx) -->
+  <script>
+    (function () {
+      var el = document.querySelector("#swift-csrf-source input[name=csrfmiddlewaretoken]");
+      window.__DJANGO_CSRF__ = el && el.value ? el.value : "";
+    })();
+  </script>
+  <script>
+    window.SWIFT_WEB_URL = "http://127.0.0.1:5173";
+    /* Toujours pointer vers ce serveur Django (login entreprise, client, livreur) */
+    window.SWIFT_DJANGO_ORIGIN = "{{ request.scheme }}://{{ request.get_host }}";
+    window.SWIFT_PRINCIPAL_ADMIN_EMAIL = "{{ swift_principal_admin_email|escapejs }}";
+  </script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script type="text/babel" data-presets="react" src="{% static 'swift_app.jsx' %}"></script>
-  <script type="text/babel" data-presets="react">
-    const root = ReactDOM.createRoot(document.getElementById("root"));
-    root.render(<SwiftMobileApp />);
-  </script>
+  <script type="text/babel" data-presets="react" src="{% static 'swift_app.jsx' %}?v={{ swift_app_cache_bust|default:'1' }}"></script>
 </body>
 </html>

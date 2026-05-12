@@ -1,0 +1,27 @@
+{% extends "entreprise/base_entreprise.html" %}
+{% block entreprise_content %}
+<h2 style="margin:0;font-size:24px;font-weight:900;">Statistiques</h2>
+<div style="margin-top:14px;display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:12px;">
+  <div style="background:#fff;border:1px solid #eee;border-radius:14px;padding:16px;"><div style="color:#777;">Total commandes (mois)</div><div style="font-size:28px;font-weight:900;color:#FF6B00;">{{ total }}</div></div>
+  <div style="background:#fff;border:1px solid #eee;border-radius:14px;padding:16px;"><div style="color:#777;">CA (mois)</div><div style="font-size:28px;font-weight:900;color:#FF6B00;">{{ ca|floatformat:2 }} MAD</div></div>
+  <div style="background:#fff;border:1px solid #eee;border-radius:14px;padding:16px;"><div style="color:#777;">Panier moyen</div><div style="font-size:28px;font-weight:900;color:#FF6B00;">{{ panier_moyen|floatformat:2 }} MAD</div></div>
+</div>
+<div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+  <div style="background:#fff;border:1px solid #eee;border-radius:14px;padding:16px;">
+    <div style="font-weight:800;margin-bottom:8px;">Commandes par statut</div>
+    {% for row in repartition %}
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f4f4f4;">
+        <span>{{ row.statut }}</span><strong>{{ row.total }}</strong>
+      </div>
+    {% empty %}<div style="color:#888;">Pas de donnees.</div>{% endfor %}
+  </div>
+  <div style="background:#fff;border:1px solid #eee;border-radius:14px;padding:16px;">
+    <div style="font-weight:800;margin-bottom:8px;">Top clients (mois)</div>
+    {% for c in top_clients %}
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f4f4f4;">
+        <span>{{ c.client__prenom }} {{ c.client__nom }}</span><strong>{{ c.total }}</strong>
+      </div>
+    {% empty %}<div style="color:#888;">Pas de donnees.</div>{% endfor %}
+  </div>
+</div>
+{% endblock %}

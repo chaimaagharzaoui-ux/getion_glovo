@@ -36,14 +36,70 @@ const getCookie = (name) => {
   const m = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
   return m ? decodeURIComponent(m[1]) : "";
 };
+
+/** Jeton CSRF : cookie (souvent bloqué si HttpOnly) ou champ caché injecté par swift_demo.html */
+const getCsrfToken = () =>
+  getCookie("csrftoken") ||
+  (typeof window !== "undefined" && window.__DJANGO_CSRF__) ||
+  "";
+
+/** Défini dans swift_demo.html : URL de l’app Vite (swift-web) pour les écrans complets React + API. */
+const openSwiftWebApp = (path) => {
+  try {
+    const raw = typeof window !== "undefined" && (window.SWIFT_WEB_URL || window.__SWIFT_WEB_URL);
+    let base = String(raw || "").trim().replace(/\/$/, "");
+    if (!base && typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+      base = "http://127.0.0.1:5173";
+    }
+    if (!base) return false;
+    const p = path.startsWith("/") ? path : `/${path}`;
+    window.location.assign(`${base}${p}`);
+    return true;
+  } catch (_) {
+    return false;
+  }
+};
+
+/** Liens auth / Django : origine injectée par swift_demo.html, ou même origine ; si page Vite (5173) → Django :8000 */
+const djangoPublicHref = (path) => {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  try {
+    let base =
+      typeof window !== "undefined" && String(window.SWIFT_DJANGO_ORIGIN || "").trim().replace(/\/$/, "");
+    if (!base && typeof window !== "undefined") {
+      const port = window.location.port;
+      if (port === "5173" || port === "4173") {
+        const proto = window.location.protocol || "http:";
+        base = `${proto}//127.0.0.1:8000`.replace(/\/$/, "");
+      }
+    }
+    if (base) return `${base}${p}`;
+    return new URL(p, window.location.origin).href;
+  } catch (_) {
+    return p;
+  }
+};
 const api = async (url, options = {}) => {
   const method = (options.method || "GET").toUpperCase();
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
-  if (method !== "GET") headers["X-CSRFToken"] = getCookie("csrftoken");
+  const csrf = getCsrfToken();
+  if (method !== "GET" && csrf) headers["X-CSRFToken"] = csrf;
   const res = await fetch(url, { credentials: "same-origin", ...options, headers });
+  const raw = await res.text();
   let data = {};
-  try { data = await res.json(); } catch (_) { data = {}; }
-  if (!res.ok) throw new Error(data.detail || "Erreur API");
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch (_) {
+    data = { detail: raw || res.statusText || "Réponse invalide" };
+  }
+  if (!res.ok) {
+    const d = data.detail;
+    const msg = typeof d === "string" ? d : d ? JSON.stringify(d) : data.message || `Erreur HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.body = data;
+    throw err;
+  }
   return data;
 };
 
@@ -256,6 +312,137 @@ const MOCK_COMMANDES = [
   { id: "SW-9812", client: "Mehdi Benali", ent: "GreenLeaf", liv: "Hassan Oubella", articles: ["Salade"], montant: 45, commission: 5.4, statut: "Livré", cree: "01/05/2026 13:20", livre: "01/05/2026 13:48" },
 ];
 
+const EQUIPE_SWIFT_PRESETS = [
+  { id: "livraison", icon: "🛵", title: "Problème de livraison", desc: "Livreur introuvable, colis retardé ou non reçu." },
+  { id: "retard", icon: "⏱️", title: "Commande en retard", desc: "Dépassement du créneau annoncé sans information." },
+  { id: "paiement", icon: "💳", title: "Erreur de paiement", desc: "Refus, double débit ou remboursement en attente." },
+  { id: "connexion", icon: "🔐", title: "Problème de connexion", desc: "Impossible d'accéder au compte ou de réinitialiser le mot de passe." },
+  { id: "commande", icon: "📦", title: "Commande incorrecte", desc: "Article manquant, mauvais produit ou quantité erronée." },
+  { id: "app", icon: "📱", title: "Bug ou blocage dans l'app", desc: "Écran figé, commande qui ne passe pas." },
+];
+
+/** Support « L'équipe Swift » — uniquement via le bouton dédié (#equipe_swift), pas sur le fil d'accueil scrollable. */
+function EquipeSwiftSupportPage({ go }) {
+  const [selected, setSelected] = useState(() => new Set());
+  const [custom, setCustom] = useState("");
+  const [sent, setSent] = useState(false);
+
+  const toggle = (id) => {
+    setSelected((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  };
+
+  const handleSubmit = () => {
+    const hasPreset = selected.size > 0;
+    const hasCustom = custom.trim().length > 0;
+    if (!hasPreset && !hasCustom) {
+      window.alert("Sélectionnez au moins un type de problème ou décrivez votre situation dans la zone de texte.");
+      return;
+    }
+    setSent(true);
+  };
+
+  return (
+    <div style={{ ...RF, minHeight: "100vh", background: COLORS.white, color: COLORS.black }}>
+      <header style={{ position: "sticky", top: 0, zIndex: 20, height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 40px", background: "rgba(255,255,255,0.96)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${COLORS.border}` }}>
+        <button type="button" onClick={() => go("landing")} style={{ ...RF, border: "none", background: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, fontWeight: 900, fontSize: 22, color: COLORS.black }}>
+          <span style={{ fontSize: 20, color: COLORS.primary }}>←</span> Swift
+        </button>
+        <div className="swift-btn-hover"><Btn size="sm" variant="outline" onClick={() => go("landing")}>Accueil</Btn></div>
+      </header>
+
+      <main style={{ maxWidth: 960, margin: "0 auto", padding: "40px 24px 80px" }}>
+        <div style={{ color: COLORS.primary, fontWeight: 800, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase" }}>Support</div>
+        <h1 style={{ fontSize: 34, fontWeight: 900, letterSpacing: "-0.03em", margin: "10px 0 8px" }}>Contacter l'équipe Swift</h1>
+        <p style={{ color: COLORS.muted, fontSize: 15, lineHeight: 1.65, maxWidth: 640 }}>
+          Indiquez ce qui vous concerne : nous traitons les demandes du lundi au dimanche. Vous pouvez combiner plusieurs catégories et préciser votre situation ci-dessous.
+        </p>
+
+        {!sent ? (
+          <>
+            <h2 style={{ fontSize: 13, fontWeight: 800, color: COLORS.muted, marginTop: 32, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.08em" }}>Problèmes fréquents</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+              {EQUIPE_SWIFT_PRESETS.map((p) => {
+                const on = selected.has(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => toggle(p.id)}
+                    className="lift-card"
+                    style={{
+                      ...RF,
+                      textAlign: "left",
+                      padding: 18,
+                      borderRadius: 16,
+                      border: on ? `2px solid ${COLORS.primary}` : `1px solid ${COLORS.border}`,
+                      background: on ? COLORS.primaryPale : COLORS.white,
+                      cursor: "pointer",
+                      boxShadow: on ? `0 8px 24px ${COLORS.primaryGlow}` : "none",
+                      color: COLORS.black,
+                    }}
+                  >
+                    <div style={{ fontSize: 26, marginBottom: 6 }}>{p.icon}</div>
+                    <div style={{ fontWeight: 900, fontSize: 16 }}>{p.title}</div>
+                    <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 6, lineHeight: 1.5 }}>{p.desc}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <h2 style={{ fontSize: 13, fontWeight: 800, color: COLORS.muted, marginTop: 36, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.08em" }}>Autre problème (précisez)</h2>
+            <textarea
+              value={custom}
+              onChange={(e) => setCustom(e.target.value)}
+              placeholder="Décrivez votre situation : numéro de commande, heure, message d'erreur…"
+              rows={8}
+              style={{
+                ...RF,
+                width: "100%",
+                boxSizing: "border-box",
+                padding: 16,
+                fontSize: 14,
+                borderRadius: 14,
+                border: `1.5px solid ${COLORS.border}`,
+                outline: "none",
+                resize: "vertical",
+                minHeight: 180,
+                background: COLORS.card,
+                color: COLORS.black,
+                transition: "border-color 0.2s, box-shadow 0.2s",
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = COLORS.primary;
+                e.target.style.boxShadow = `0 0 0 3px ${COLORS.primaryGlow}`;
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = COLORS.border;
+                e.target.style.boxShadow = "none";
+              }}
+            />
+
+            <div style={{ marginTop: 28, display: "flex", justifyContent: "flex-end", flexWrap: "wrap", gap: 12 }}>
+              <Btn variant="outline" onClick={() => go("landing")}>Annuler</Btn>
+              <div className="swift-btn-hover"><Btn size="lg" onClick={handleSubmit}>Envoyer à l'équipe Swift</Btn></div>
+            </div>
+          </>
+        ) : (
+          <Card className="lift-card" style={{ marginTop: 36, padding: 28, textAlign: "center", border: `2px solid ${COLORS.primary}` }}>
+            <div style={{ fontSize: 48 }}>✅</div>
+            <div style={{ fontWeight: 900, fontSize: 20, marginTop: 12 }}>Merci !</div>
+            <p style={{ color: COLORS.muted, marginTop: 10, lineHeight: 1.6 }}>Votre message a bien été enregistré (démo). Nous vous répondrons dans les plus brefs délais.</p>
+            <div style={{ marginTop: 22 }} className="swift-btn-hover"><Btn onClick={() => go("landing")}>Retour à l'accueil</Btn></div>
+          </Card>
+        )}
+      </main>
+    </div>
+  );
+}
+
 function SwiftMobileApp() {
   const [orders, setOrders] = useState([]);
   return (
@@ -276,7 +463,8 @@ function SwiftMobileApp() {
         .lift-card:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(0,0,0,.12); }
         .icon-float { display: inline-block; transition: transform .25s; }
         .lift-card:hover .icon-float { transform: translateY(-3px); }
-        .reveal-on-scroll { opacity: 0; transform: translateY(18px); transition: opacity .55s ease, transform .55s ease; }
+        /* Toujours visible : l’ancien masquage (opacity:0) provoquait une page « vide » si l’IntersectionObserver ne tirait pas. */
+        .reveal-on-scroll { opacity: 1; transform: translateY(0); }
         .reveal-on-scroll.is-visible { opacity: 1; transform: translateY(0); }
         .role-card { transition: transform .25s, box-shadow .25s, border-color .25s; }
         .role-card:hover { transform: translateY(-6px) scale(1.01); box-shadow: 0 22px 50px rgba(255,107,0,.18); border-color: #FF8C35; }
@@ -297,6 +485,7 @@ function ClientAppPlatform({ orders, setOrders }) {
       "dashboard", "catalogue", "cart", "checkout",
       "tracking", "history", "profile",
       "livreur_dashboard", "enterprise_dashboard", "admin_dashboard",
+      "equipe_swift",
     ];
     return validScreens.includes(hash) ? hash : "landing";
   };
@@ -308,6 +497,10 @@ function ClientAppPlatform({ orders, setOrders }) {
   const [cart, setCart] = useState([]);
   const [biz, setBiz] = useState(null);
   const [checkoutOk, setCheckoutOk] = useState(false);
+  const [checkoutErr, setCheckoutErr] = useState("");
+  /** Produits réels Django pour la succursale courante (commande → `orders_order`). */
+  const [catalogApiRows, setCatalogApiRows] = useState(null);
+  const [apiBranchId, setApiBranchId] = useState(null);
   const [trackStep, setTrackStep] = useState(0);
   const [catF, setCatF] = useState(null);
   const [search, setSearch] = useState("");
@@ -318,7 +511,6 @@ function ClientAppPlatform({ orders, setOrders }) {
   const [addr, setAddr] = useState("Bd Zerktouni 32, Casablanca");
   const [pay, setPay] = useState("cash");
   const [histOpen, setHistOpen] = useState(null);
-  const [landFade, setLandFade] = useState(0);
   const [actor, setActor] = useState(0);
   const [profNotif, setProfNotif] = useState({ cmd: true, promo: false, news: true });
   const [authErr, setAuthErr] = useState("");
@@ -327,21 +519,6 @@ function ClientAppPlatform({ orders, setOrders }) {
     window.location.hash = s;
   };
 
-  useEffect(() => { const t = setTimeout(() => setLandFade(1), 80); return () => clearTimeout(t); }, []);
-  useEffect(() => {
-    if (screen !== "landing") return undefined;
-    const nodes = Array.from(document.querySelectorAll(".reveal-on-scroll"));
-    const obs = new IntersectionObserver((entries) => {
-      entries.forEach((e) => {
-        if (e.isIntersecting) {
-          e.target.classList.add("is-visible");
-          obs.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0.15 });
-    nodes.forEach((n) => obs.observe(n));
-    return () => obs.disconnect();
-  }, [screen]);
   useEffect(() => {
     if (screen !== "tracking") return;
     if (trackStep >= 2) return;
@@ -376,6 +553,7 @@ function ClientAppPlatform({ orders, setOrders }) {
         "dashboard", "catalogue", "cart", "checkout",
         "tracking", "history", "profile",
         "livreur_dashboard", "enterprise_dashboard", "admin_dashboard",
+        "equipe_swift",
       ];
       if (validScreens.includes(hash)) setScreen(hash);
       else setScreen("landing");
@@ -383,6 +561,42 @@ function ClientAppPlatform({ orders, setOrders }) {
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
+
+  useEffect(() => {
+    if (screen !== "catalogue" || !biz || !isAuthenticated) return;
+    let cancelled = false;
+    setCheckoutErr("");
+    setCatalogApiRows(null);
+    setApiBranchId(null);
+    setCart([]);
+    (async () => {
+      try {
+        let rows = await api(`/products?branch=${biz.id}`);
+        let bid = biz.id;
+        if (!Array.isArray(rows) || !rows.length) {
+          rows = await api("/products");
+          if (!Array.isArray(rows) || !rows.length) return;
+          const matchBiz = rows.filter((r) => r.branch === biz.id);
+          if (matchBiz.length) {
+            rows = matchBiz;
+            bid = biz.id;
+          } else {
+            bid = rows[0].branch;
+            rows = rows.filter((r) => r.branch === bid);
+          }
+        }
+        if (cancelled) return;
+        setApiBranchId(bid);
+        setCatalogApiRows(rows);
+      } catch (_) {
+        if (!cancelled) {
+          setCatalogApiRows([]);
+          setApiBranchId(null);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [screen, biz?.id, isAuthenticated]);
 
   const cartN = cart.reduce((a, i) => a + i.qty, 0);
   const subtotal = cart.reduce((a, i) => a + i.price * i.qty, 0);
@@ -505,7 +719,7 @@ function ClientAppPlatform({ orders, setOrders }) {
       { icon: "⚙️", title: "Admin", desc: "Superviser la plateforme Swift", screen: "admin_dashboard" },
     ];
     return (
-    <div style={{ ...RF, opacity: landFade, transition: "opacity 0.5s", background: COLORS.white, minHeight: "100vh" }}>
+    <div style={{ ...RF, background: COLORS.white, minHeight: "100vh" }}>
       <header style={{ position: "sticky", top: 0, zIndex: 20, height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 40px", background: "rgba(255,255,255,0.92)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${COLORS.border}` }}>
         <div style={{ fontWeight: 900, fontSize: 22, display: "flex", alignItems: "center", gap: 10 }}><span style={{ width: 10, height: 10, borderRadius: "50%", background: COLORS.primary }} />Swift</div>
         <nav style={{ display: "flex", gap: 28, fontSize: 14, color: COLORS.muted }}>
@@ -515,8 +729,9 @@ function ClientAppPlatform({ orders, setOrders }) {
           <a className="top-nav-link" href="#apropos" style={{ color: "inherit", textDecoration: "none" }}>À propos</a>
         </nav>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <button type="button" onClick={() => go("login")} style={{ ...RF, border: "none", background: "none", color: COLORS.muted, fontWeight: 600, cursor: "pointer" }}>Se connecter</button>
-          <div className="swift-btn-hover"><Btn size="sm" onClick={() => go("register")}>Télécharger l'app →</Btn></div>
+          <div style={{ border: `2px solid ${COLORS.primary}`, borderRadius: 12, padding: "4px 4px", background: COLORS.primaryPale, boxSizing: "border-box" }}>
+            <button type="button" onClick={() => go("login")} style={{ ...RF, border: "none", background: "transparent", color: COLORS.primary, fontWeight: 800, cursor: "pointer", padding: "6px 14px", borderRadius: 8 }}>Se connecter</button>
+          </div>
         </div>
       </header>
       <section className="reveal-on-scroll" style={{ maxWidth: 1200, margin: "0 auto", padding: "84px 60px 72px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, alignItems: "center" }}>
@@ -545,14 +760,22 @@ function ClientAppPlatform({ orders, setOrders }) {
           </Card>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
             {CAT_CLIENT.slice(0, 6).map((c) => <Badge key={c.id} variant="info">{c.icon} {c.label}</Badge>)}
-            <Badge variant="muted">+6 autres →</Badge>
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={() => { go("login"); }}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go("login"); } }}
+              style={{ display: "inline-flex", cursor: "pointer" }}
+            >
+              <Badge variant="muted">+6 autres →</Badge>
+            </span>
           </div>
         </div>
       </section>
       <section className="reveal-on-scroll" style={{ background: "#F0EFE9", padding: "56px 60px", borderTop: `1px solid ${COLORS.border}` }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
           <div><div style={{ color: COLORS.primary, fontWeight: 800, fontSize: 10, letterSpacing: "0.2em" }}>NOS PARTENAIRES</div><div style={{ fontWeight: 900, fontSize: 22 }}>50+ enseignes vous font confiance</div></div>
-          <Btn variant="outline" size="sm">Voir tout →</Btn>
+          <Btn variant="outline" size="sm" onClick={() => { go("login"); }}>Voir tout →</Btn>
         </div>
         <MarqueeRow items={PARTNERS.slice(0, 8)} lightBg /><div style={{ height: 12 }} /><MarqueeRow items={[...PARTNERS.slice(8), ...PARTNERS.slice(0, 4)]} reverse lightBg />
       </section>
@@ -561,6 +784,11 @@ function ClientAppPlatform({ orders, setOrders }) {
           {["⏳ Attentes interminables", "📞 Appels sans fin", "❌ Mauvaises commandes"].map((t) => <Card className="lift-card" key={t} style={{ padding: 20 }}><div style={{ fontWeight: 700 }}>{t}</div></Card>)}
         </div>
         <Card style={{ maxWidth: 1200, margin: "20px auto 0", padding: 20, border: `2px solid ${COLORS.primary}` }}><strong style={{ color: COLORS.primary }}>Swift a été conçu pour résoudre exactement ces problèmes.</strong></Card>
+        <div style={{ maxWidth: 1200, margin: "18px auto 0", textAlign: "center" }}>
+          <div className="swift-btn-hover" style={{ display: "inline-block" }}>
+            <Btn size="sm" onClick={() => go("equipe_swift")}>L'équipe Swift</Btn>
+          </div>
+        </div>
       </section>
       <section id="solution" className="reveal-on-scroll" style={{ padding: "64px 60px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, maxWidth: 1200, margin: "0 auto" }}>
         <div>
@@ -585,7 +813,17 @@ function ClientAppPlatform({ orders, setOrders }) {
         <h3 style={{ fontSize: 34, fontWeight: 900, letterSpacing: "-0.03em", margin: "8px 0 18px" }}>Accédez à l’interface qui vous correspond</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
           {roleCards.map((r) => (
-            <div key={r.title} onClick={() => go(r.screen)} className="role-card" style={{ color: COLORS.black, border: `1px solid ${COLORS.border}`, borderRadius: 20, padding: 18, background: "linear-gradient(180deg,#fff,#fff8f3)", cursor: "pointer" }}>
+            <div key={r.title} onClick={() => {
+              if (r.title === "Entreprise") {
+                window.location.assign(djangoPublicHref("/entreprise/login/"));
+                return;
+              }
+              if (r.title === "Livreur") {
+                window.location.assign(djangoPublicHref("/livreur/login/"));
+                return;
+              }
+              go(r.screen);
+            }} className="role-card" style={{ color: COLORS.black, border: `1px solid ${COLORS.border}`, borderRadius: 20, padding: 18, background: "linear-gradient(180deg,#fff,#fff8f3)", cursor: "pointer" }}>
               <div className="icon-float" style={{ fontSize: 34 }}>{r.icon}</div>
               <div style={{ marginTop: 8, fontWeight: 900, fontSize: 18 }}>{r.title}</div>
               <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 6, lineHeight: 1.55 }}>{r.desc}</div>
@@ -620,7 +858,7 @@ function ClientAppPlatform({ orders, setOrders }) {
         <div><h3 style={{ fontSize: 28, fontWeight: 900 }}>Augmentez vos ventes de <span style={{ color: COLORS.primary }}>40%</span></h3><ul style={{ color: COLORS.muted, lineHeight: 2 }}><li>Zéro frais d'installation</li><li>Tableau de bord temps réel</li><li>Livreurs disponibles</li><li>Support 7j/7</li></ul></div>
         <Card style={{ padding: 24, border: `2px solid ${COLORS.primary}` }}>
           <div style={{ fontSize: 36, fontWeight: 900 }}>0 MAD</div><div style={{ color: COLORS.muted }}>frais d'installation</div>
-          <div className="swift-btn-hover"><Btn full style={{ marginTop: 16 }} onClick={() => go("enterprise_dashboard")}>Démarrer avec Swift →</Btn></div>
+          <div className="swift-btn-hover"><Btn full style={{ marginTop: 16 }} onClick={() => { window.location.assign(djangoPublicHref("/entreprise/login/")); }}>Démarrer avec Swift →</Btn></div>
         </Card>
       </section>
       <section className="reveal-on-scroll" style={{ background: COLORS.primary, padding: "56px 60px", textAlign: "center", color: COLORS.white }}>
@@ -650,6 +888,7 @@ function ClientAppPlatform({ orders, setOrders }) {
     </div>
   );
 
+  if (screen === "equipe_swift") return <EquipeSwiftSupportPage go={go} />;
   if (screen === "landing") return <Landing />;
   if (screen === "login") return (
     <AuthCard>
@@ -728,9 +967,9 @@ function ClientAppPlatform({ orders, setOrders }) {
     </div>
   );
 
-  if (screen === "livreur_dashboard") return <LivreurAppPlatform initialScreen="app" onBackToLanding={() => go("landing")} />;
-  if (screen === "enterprise_dashboard") return <EnterpriseAppPlatform initialScreen="app" onBackToLanding={() => go("landing")} />;
-  if (screen === "admin_dashboard") return <AdminAppPlatform initialScreen="app" onBackToLanding={() => go("landing")} orders={orders} />;
+  if (screen === "livreur_dashboard") return <LivreurAppPlatform initialScreen="login" onBackToLanding={() => go("landing")} />;
+  if (screen === "enterprise_dashboard") return <EnterpriseAppPlatform initialScreen="login" onBackToLanding={() => go("landing")} />;
+  if (screen === "admin_dashboard") return <AdminAppPlatform initialScreen="login" onBackToLanding={() => go("landing")} />;
 
   if (screen === "dashboard" && !isAuthenticated) return go("login"), null;
   if (screen === "dashboard") return shell(
@@ -772,29 +1011,32 @@ function ClientAppPlatform({ orders, setOrders }) {
         {cartN > 0 && <Btn size="sm" onClick={() => go("cart")}>Voir le panier ({cartN})</Btn>}
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>{["All", "<5", "5-10", ">10"].map((p) => <Btn key={p} size="sm" variant={priceF === p ? "primary" : "ghost"} onClick={() => setPriceF(p)}>{p === "All" ? "Tous" : p === "<5" ? "< 5 €" : p === "5-10" ? "5–10 €" : "> 10 €"}</Btn>)}</div>
+      {catalogApiRows === null && (
+        <div style={{ color: COLORS.muted, fontSize: 13, marginBottom: 12 }}>Chargement du catalogue…</div>
+      )}
+      {catalogApiRows !== null && catalogApiRows.length === 0 && (
+        <Card style={{ padding: 16, marginBottom: 16, background: COLORS.primaryPale, borderColor: COLORS.primary }}>
+          <strong style={{ color: COLORS.primary }}>Aucun produit en base pour cette boutique.</strong>
+          <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 8 }}>
+            Exécutez : <code style={{ background: "#fff", padding: "2px 6px", borderRadius: 6 }}>python manage.py seed_swift_order_demo</code>
+            {" "}puis rouvrez le catalogue.
+          </div>
+        </Card>
+      )}
+      {catalogApiRows !== null && catalogApiRows.length > 0 && (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 14 }}>
-        {getMenuByCategorie(
-          biz?.cat === "restaurant" ? "Restaurant" :
-          biz?.cat === "pharmacy" ? "Pharmacie" :
-          biz?.cat === "groceries" ? "Épicerie" :
-          biz?.cat === "flowers" ? "Fleurs" :
-          biz?.cat === "sports" ? "Sports" : "Restaurant"
-        ).filter((p) => priceF === "All" || (priceF === "<5" && p.prix < 5) || (priceF === "5-10" && p.prix >= 5 && p.prix <= 10) || (priceF === ">10" && p.prix > 10)).map((p, idx) => (
-          <Card key={`${p.nom}-${idx}`} style={{ padding: 16, background: "#FFFFFF" }}>
-            <img
-              src={p.image}
-              alt={p.nom}
-              style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 12, marginBottom: 12, backgroundColor: "#222" }}
-              onError={(e) => { e.target.style.display = "none"; }}
-            />
-            <div style={{ fontWeight: 700, color: "#0D0D0D", marginTop: 8 }}>{p.nom}</div>
+        {catalogApiRows.filter((p) => priceF === "All" || (priceF === "<5" && p.price < 5) || (priceF === "5-10" && p.price >= 5 && p.price <= 10) || (priceF === ">10" && p.price > 10)).map((p) => (
+          <Card key={p.id} style={{ padding: 16, background: "#FFFFFF" }}>
+            <div style={{ fontWeight: 700, color: "#0D0D0D", marginTop: 8 }}>{p.name}</div>
+            <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 4 }}>Stock : {p.stock}</div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-              <span style={{ color: COLORS.primary, fontWeight: 900 }}>{eur(p.prix)}</span>
-              <button type="button" onClick={() => addCart({ id: `${biz?.id}-${idx}`, name: p.nom, price: p.prix, icon: "🛍️" })} style={{ ...RF, width: 32, height: 32, borderRadius: 10, border: "none", background: COLORS.primary, color: COLORS.white, cursor: "pointer", fontWeight: 900 }}>+</button>
+              <span style={{ color: COLORS.primary, fontWeight: 900 }}>{eur(p.price)}</span>
+              <button type="button" onClick={() => addCart({ id: p.id, name: p.name, price: p.price, icon: "🛍️" })} style={{ ...RF, width: 32, height: 32, borderRadius: 10, border: "none", background: COLORS.primary, color: COLORS.white, cursor: "pointer", fontWeight: 900 }}>+</button>
             </div>
           </Card>
         ))}
       </div>
+      )}
     </div>
   );
 
@@ -844,18 +1086,32 @@ function ClientAppPlatform({ orders, setOrders }) {
       </div>
       <Card style={{ padding: 20, height: "fit-content", background: "#FFFFFF" }}>
         <div style={{ color: COLORS.textMuted, display: "flex", justifyContent: "space-between" }}><span>Total</span><span style={{ color: COLORS.primary, fontWeight: 900 }}>{eur(subtotal + 2.99)}</span></div>
-        <Btn full style={{ marginTop: 16 }} onClick={() => {
-          const newOrder = {
-            id: `#${String(orders.length + 1).padStart(4, "0")}`,
-            entreprise: biz?.name || "Entreprise",
-            date: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }),
-            articles: cart,
-            total: subtotal + 2.99,
-            statut: "Livré",
-          };
-          setOrders((prev) => [newOrder, ...prev]);
-          setCheckoutOk(true);
-          setCart([]);
+        {checkoutErr && <div style={{ color: COLORS.red, fontSize: 13, marginTop: 12 }}>{checkoutErr}</div>}
+        <Btn full style={{ marginTop: 16 }} onClick={async () => {
+          setCheckoutErr("");
+          if (!apiBranchId) {
+            setCheckoutErr("Succursale inconnue : repassez par le catalogue (produits chargés depuis le serveur).");
+            return;
+          }
+          if (!cart.length) return;
+          const bad = cart.find((i) => typeof i.id !== "number");
+          if (bad) {
+            setCheckoutErr("Panier invalide : ajoutez les articles depuis le catalogue (après chargement des produits).");
+            return;
+          }
+          try {
+            await api("/order/create", {
+              method: "POST",
+              body: JSON.stringify({
+                branch_id: apiBranchId,
+                items: cart.map((i) => ({ product_id: i.id, quantity: i.qty })),
+              }),
+            });
+            setCheckoutOk(true);
+            setCart([]);
+          } catch (e) {
+            setCheckoutErr(e.message || "Impossible d'enregistrer la commande.");
+          }
         }}>Confirmer la commande ✅</Btn>
       </Card>
     </div>
@@ -1169,50 +1425,322 @@ function EnterpriseAppPlatform({ initialScreen = "login", onBackToLanding }) {
 }
 
 /* ═══════════════ ADMIN APP ═══════════════ */
-function AdminAppPlatform({ initialScreen = "login", onBackToLanding, orders = [] }) {
+function AdminSwiftParametres({ adminEmail }) {
+  const [ancien, setAncien] = useState("");
+  const [nouveau, setNouveau] = useState("");
+  const [conf, setConf] = useState("");
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const submit = async () => {
+    setMsg("");
+    setErr("");
+    if (nouveau !== conf) {
+      setErr("Les mots de passe ne correspondent pas.");
+      return;
+    }
+    if (nouveau.length < 8) {
+      setErr("Le mot de passe doit faire au moins 8 caractères.");
+      return;
+    }
+    try {
+      await api(djangoPublicHref("/swift-admin/change-password"), {
+        method: "PUT",
+        body: JSON.stringify({ ancienMdp: ancien, nouveauMdp: nouveau }),
+      });
+      setMsg("Mot de passe changé avec succès.");
+      setAncien("");
+      setNouveau("");
+      setConf("");
+    } catch (e) {
+      setErr(e.body?.message || e.body?.detail || e.message || "Erreur lors du changement.");
+    }
+  };
+  return (
+    <div style={{ maxWidth: 560 }}>
+      <div style={{ background: "rgba(255,107,0,0.08)", border: "1px solid rgba(255,107,0,0.2)", borderRadius: 16, padding: 20, marginBottom: 24 }}>
+        <div style={{ fontWeight: 800, fontSize: 15, color: COLORS.primary, marginBottom: 8 }}>Compte administrateur unique</div>
+        <div style={{ color: COLORS.textMuted, fontSize: 13, lineHeight: 1.7 }}>
+          Email : <strong style={{ color: COLORS.textDark }}>{adminEmail || "—"}</strong>
+          <br />
+          Seul ce compte peut accéder à ce panneau. Aucune création de compte admin depuis l’application.
+        </div>
+      </div>
+      <Card dark style={{ padding: 24 }}>
+        <div style={{ fontWeight: 800, fontSize: 16, color: COLORS.textDark, marginBottom: 20 }}>Changer le mot de passe</div>
+        {[
+          ["Ancien mot de passe", ancien, setAncien],
+          ["Nouveau mot de passe", nouveau, setNouveau],
+          ["Confirmer", conf, setConf],
+        ].map(([lab, v, set]) => (
+          <div key={lab} style={{ marginBottom: 16 }}>
+            <div style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 6, fontWeight: 600 }}>{lab}</div>
+            <input
+              type="password"
+              value={v}
+              onChange={(e) => set(e.target.value)}
+              style={{ ...RF, width: "100%", background: COLORS.cardDark, border: `1.5px solid ${COLORS.borderDark}`, borderRadius: 12, padding: "13px 14px", color: COLORS.textDark, fontSize: 14, boxSizing: "border-box", outline: "none" }}
+            />
+          </div>
+        ))}
+        {err && <div style={{ color: COLORS.red, fontSize: 13, marginBottom: 12 }}>{err}</div>}
+        {msg && <div style={{ color: COLORS.green, fontSize: 13, marginBottom: 12 }}>{msg}</div>}
+        <Btn onClick={submit}>Enregistrer le nouveau mot de passe</Btn>
+      </Card>
+    </div>
+  );
+}
+
+function adminStatutCommandeFr(s) {
+  const m = { pending: "En attente", assigned: "Assignée", in_delivery: "En livraison", completed: "Livrée", cancelled: "Annulée" };
+  return m[s] || s;
+}
+
+function livStatutFr(s) {
+  const m = { en_attente: "En attente", valide: "Validé", suspendu: "Suspendu" };
+  return m[s] || s;
+}
+
+function adminStatutBadgeStyle(s) {
+  if (s === "completed") return { bg: "rgba(34,197,94,0.12)", color: COLORS.green, bd: "rgba(34,197,94,0.35)" };
+  if (s === "cancelled") return { bg: "rgba(239,68,68,0.12)", color: COLORS.red, bd: "rgba(239,68,68,0.35)" };
+  if (s === "in_delivery") return { bg: "rgba(255,107,0,0.12)", color: COLORS.primary, bd: "rgba(255,107,0,0.35)" };
+  return { bg: "rgba(59,130,246,0.12)", color: COLORS.blue, bd: "rgba(59,130,246,0.35)" };
+}
+
+function AdminMiniBarChart({ data }) {
+  const rows = data || [];
+  const max = Math.max(1, ...rows.map((d) => d.total || 0));
+  if (!rows.length) return <div style={{ color: COLORS.textMuted, textAlign: "center", padding: 40 }}>Aucune donnée sur 7 jours</div>;
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 150, padding: "0 4px" }}>
+      {rows.map((d, i) => (
+        <div key={d.date || i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: COLORS.primary }}>{d.total}</div>
+          <div style={{ width: "100%", height: `${Math.max(6, (d.total / max) * 110)}px`, background: `linear-gradient(180deg, ${COLORS.primary}, rgba(255,107,0,0.25))`, borderRadius: "6px 6px 0 0", transition: "height 0.4s ease" }} />
+          <div style={{ fontSize: 9, color: COLORS.textMuted, textAlign: "center", lineHeight: 1.2 }}>
+            {d.date ? new Date(`${d.date}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" }) : "—"}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AdminAppPlatform({ initialScreen = "login", onBackToLanding, orders: _ordersProp = [] }) {
   const [screen, setScreen] = useState(initialScreen);
   const [nav, setNav] = useState("dash");
-  const [panel, setPanel] = useState(null);
-  const [modal, setModal] = useState(null);
+  const [adminOrdModal, setAdminOrdModal] = useState(null);
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPass, setAdminPass] = useState("");
-  const [serverStats, setServerStats] = useState(null);
-  const [serverOrders, setServerOrders] = useState([]);
-  const CLIENTS = MOCK_CLIENTS;
-  const LIVREURS = MOCK_LIVREURS;
-  const ENTREPRISES = MOCK_ENTREPRISES;
-  const COMMANDES = orders;
-  const aujourdhui = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-  const totalClients = CLIENTS.length;
-  const totalLivreurs = LIVREURS.length;
-  const livreursActifs = LIVREURS.filter((l) => l.statut === "Actif" || l.statut === "En ligne").length;
-  const totalEntreprises = ENTREPRISES.length;
-  const entreprisesActives = ENTREPRISES.filter((e) => e.statut === "Actif" || e.statut === "Active").length;
-  const commandesAujourdhui = COMMANDES.filter((c) => c.date === aujourdhui).length;
-  const gmvAujourdhui = COMMANDES.reduce((sum, c) => sum + (c.total || 0), 0);
-  const commissionPercue = gmvAujourdhui * 0.12;
-  const effectiveStats = serverStats || {
-    total_clients: totalClients,
-    total_orders: COMMANDES.length,
-    pending_orders: 0,
-    in_delivery_orders: 0,
-    completed_orders: COMMANDES.length,
+  const [showAdminPass, setShowAdminPass] = useState(false);
+  const [adminErreur, setAdminErreur] = useState("");
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [dashStats, setDashStats] = useState(null);
+  const [dashBusy, setDashBusy] = useState(false);
+  const [clientRows, setClientRows] = useState(null);
+  const [clientTotal, setClientTotal] = useState(0);
+  const [clientPages, setClientPages] = useState(1);
+  const [clientPage, setClientPage] = useState(1);
+  const [clientSearch, setClientSearch] = useState("");
+  const [selClient, setSelClient] = useState(null);
+  const [clientHist, setClientHist] = useState(null);
+  const [entRows, setEntRows] = useState(null);
+  const [entSearch, setEntSearch] = useState("");
+  const [selEnt, setSelEnt] = useState(null);
+  const [entHist, setEntHist] = useState(null);
+  const [livRows, setLivRows] = useState(null);
+  const [livFilt, setLivFilt] = useState("tous");
+  const [selLiv, setSelLiv] = useState(null);
+  const [livHist, setLivHist] = useState(null);
+  const [ordRows, setOrdRows] = useState(null);
+  const adminPollRef = useRef(() => {});
+  const hintPrincipalEmail = (typeof window !== "undefined" && window.SWIFT_PRINCIPAL_ADMIN_EMAIL) || "swift@gmail.com";
+
+  const adminFetch = (path, opts) => api(djangoPublicHref(path), opts);
+
+  const loadDashboardStats = async () => {
+    setDashBusy(true);
+    try {
+      const d = await adminFetch("/swift-admin/dashboard-stats");
+      setDashStats(d);
+    } catch (_) {
+      setDashStats(null);
+    } finally {
+      setDashBusy(false);
+    }
   };
-  const effectiveOrders = serverOrders.length ? serverOrders : COMMANDES;
+
+  const loadClients = async (page, search) => {
+    try {
+      const q = new URLSearchParams({ page: String(page || 1), limit: "20", search: search || "" }).toString();
+      const d = await adminFetch(`/swift-admin/clients?${q}`);
+      setClientRows(d.clients || []);
+      setClientTotal(d.total || 0);
+      setClientPages(d.pages || 1);
+    } catch (_) {
+      setClientRows([]);
+    }
+  };
+
+  const loadEntreprises = async (search) => {
+    try {
+      const q = new URLSearchParams({ search: search || "" }).toString();
+      const d = await adminFetch(`/swift-admin/entreprises?${q}`);
+      setEntRows(Array.isArray(d) ? d : []);
+    } catch (_) {
+      setEntRows([]);
+    }
+  };
+
+  const loadLivreurs = async (filt) => {
+    try {
+      const q = filt && filt !== "tous" ? `?statut=${encodeURIComponent(filt)}` : "";
+      const d = await adminFetch(`/swift-admin/livreurs${q}`);
+      setLivRows(Array.isArray(d) ? d : []);
+    } catch (_) {
+      setLivRows([]);
+    }
+  };
+
+  const loadOrders = async () => {
+    try {
+      const list = await adminFetch("/orders");
+      setOrdRows(Array.isArray(list) ? list : []);
+    } catch (_) {
+      setOrdRows([]);
+    }
+  };
+
   const loadAdminLiveData = async () => {
-    try {
-      const s = await api("/dashboard");
-      setServerStats(s);
-    } catch (_) {}
-    try {
-      const list = await api("/orders");
-      setServerOrders((list || []).map((o) => ({
-        id: `#${o.id}`,
-        entreprise: o.branch_name || "Entreprise",
-        total: o.total_price || 0,
-      })));
-    } catch (_) {}
+    await loadDashboardStats();
+    await loadOrders();
   };
+
+  const loginPrincipalAdmin = async () => {
+    if (!adminEmail.trim() || !adminPass) {
+      setAdminErreur("Veuillez remplir tous les champs.");
+      return;
+    }
+    setAdminLoading(true);
+    setAdminErreur("");
+    try {
+      await api(djangoPublicHref("/swift-admin/principal-login"), {
+        method: "POST",
+        body: JSON.stringify({ email: adminEmail.trim(), password: adminPass }),
+      });
+      await loadAdminLiveData();
+      setScreen("app");
+    } catch (err) {
+      const et = err.body?.erreurType;
+      if (et === "EMAIL_NON_AUTORISE") {
+        setAdminErreur("Cet email n’est pas autorisé. Il n’existe qu’un seul compte administrateur sur cette plateforme.");
+      } else if (et === "MOT_DE_PASSE_INCORRECT") {
+        setAdminErreur("Mot de passe incorrect. Réessayez.");
+      } else if (et === "COMPTE_ADMIN_ABSENT") {
+        setAdminErreur(err.body?.message || "Aucun compte admin configuré. Exécutez : python manage.py ensure_swift_principal_admin");
+      } else {
+        setAdminErreur(err.body?.message || err.body?.detail || err.message || "Erreur de connexion.");
+      }
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!selClient) {
+      setClientHist(null);
+      return;
+    }
+    let ok = true;
+    (async () => {
+      try {
+        const h = await adminFetch(`/swift-admin/clients/${selClient.id}/historique`);
+        if (ok) setClientHist(h);
+      } catch (_) {
+        if (ok) setClientHist([]);
+      }
+    })();
+    return () => { ok = false; };
+  }, [selClient?.id]);
+
+  useEffect(() => {
+    if (!selEnt) {
+      setEntHist(null);
+      return;
+    }
+    let ok = true;
+    (async () => {
+      try {
+        const h = await adminFetch(`/swift-admin/entreprises/${selEnt.id}/historique`);
+        if (ok) setEntHist(h);
+      } catch (_) {
+        if (ok) setEntHist([]);
+      }
+    })();
+    return () => { ok = false; };
+  }, [selEnt?.id]);
+
+  useEffect(() => {
+    if (!selLiv) {
+      setLivHist(null);
+      return;
+    }
+    let ok = true;
+    (async () => {
+      try {
+        const h = await adminFetch(`/swift-admin/livreurs/${selLiv.id}/historique`);
+        if (ok) setLivHist(h);
+      } catch (_) {
+        if (ok) setLivHist([]);
+      }
+    })();
+    return () => { ok = false; };
+  }, [selLiv?.id]);
+
+  adminPollRef.current = async () => {
+    await loadDashboardStats();
+    if (nav === "clients") await loadClients(clientPage, clientSearch);
+    if (nav === "ent") await loadEntreprises(entSearch);
+    if (nav === "liv") await loadLivreurs(livFilt);
+    if (nav === "cmd") await loadOrders();
+  };
+
+  useEffect(() => {
+    if (screen !== "app") return undefined;
+    const id = setInterval(() => { adminPollRef.current(); }, 30000);
+    return () => clearInterval(id);
+  }, [screen, nav, clientPage, clientSearch, entSearch, livFilt]);
+
+  useEffect(() => {
+    if (screen !== "app" || nav !== "clients") return;
+    loadClients(clientPage, clientSearch);
+  }, [screen, nav, clientPage]);
+
+  useEffect(() => {
+    if (screen !== "app" || nav !== "clients") return undefined;
+    const h = setTimeout(() => { loadClients(clientPage, clientSearch); }, 400);
+    return () => clearTimeout(h);
+  }, [clientSearch]);
+
+  useEffect(() => {
+    if (screen !== "app" || nav !== "ent") return;
+    loadEntreprises(entSearch);
+  }, [screen, nav]);
+
+  useEffect(() => {
+    if (screen !== "app" || nav !== "ent") return undefined;
+    const h = setTimeout(() => { loadEntreprises(entSearch); }, 400);
+    return () => clearTimeout(h);
+  }, [entSearch]);
+
+  useEffect(() => {
+    if (screen !== "app") return;
+    (async () => {
+      await loadDashboardStats();
+      if (nav === "liv") await loadLivreurs(livFilt);
+      if (nav === "cmd") await loadOrders();
+    })();
+  }, [screen, nav, livFilt]);
 
   const Side = () => (
     <aside style={{ width: 260, background: COLORS.surfaceDark, borderRight: `1px solid ${COLORS.borderDark}`, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -1220,14 +1748,10 @@ function AdminAppPlatform({ initialScreen = "login", onBackToLanding, orders = [
       {[
         ["dash", "📊", "Vue d'ensemble"],
         ["clients", "👤", "Clients"],
-        ["liv", "🛵", "Livreurs"],
         ["ent", "🏪", "Entreprises"],
+        ["liv", "🛵", "Livreurs"],
         ["cmd", "📦", "Commandes"],
-        ["fin", "💰", "Finances"],
-        ["zone", "🗺️", "Zones"],
-        ["mkt", "📢", "Marketing"],
         ["param", "⚙️", "Paramètres"],
-        ["logs", "📋", "Logs"],
       ].map(([k, i, l]) => (
         <button key={k} type="button" onClick={() => { setNav(k); setScreen("app"); }} style={{ ...RF, display: "block", width: "100%", textAlign: "left", padding: "12px 20px", border: "none", background: nav === k ? COLORS.primaryGlow : "transparent", color: nav === k ? COLORS.primary : COLORS.textMuted, fontWeight: 700, cursor: "pointer" }}>{i} {l}</button>
       ))}
@@ -1250,67 +1774,302 @@ function AdminAppPlatform({ initialScreen = "login", onBackToLanding, orders = [
   );
 
   if (screen === "login") return (
-    <div style={{ ...RF, minHeight: "100vh", background: COLORS.bgDark, display: "grid", placeItems: "center" }}>
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 0%, rgba(255,107,0,0.2), transparent 50%)" }} />
-      <Card dark style={{ width: 420, padding: 32, zIndex: 1 }}>
-        <h1 style={{ color: COLORS.textDark, fontWeight: 900, textAlign: "center" }}>⚙️ Admin Swift</h1>
-        <Badge variant="warning" style={{ display: "block", textAlign: "center", margin: "12px 0" }}>Accès réservé aux administrateurs</Badge>
-        <Input placeholder="Email admin" value={adminEmail} onCommit={setAdminEmail} />
-        <Input type="password" placeholder="Mot de passe" value={adminPass} onCommit={setAdminPass} />
-        <Btn full onClick={async () => {
-          try {
-            await api("/login", { method: "POST", body: JSON.stringify({ username: adminEmail, password: adminPass }) });
-          } catch (_) {}
-          await loadAdminLiveData();
-          setScreen("app");
-        }}>Connexion sécurisée</Btn>
+    <div style={{ ...RF, minHeight: "100vh", background: COLORS.bgDark, display: "grid", placeItems: "center", padding: 24 }}>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 0%, rgba(255,107,0,0.12) 0%, transparent 60%)" }} />
+      <Card dark style={{ width: "100%", maxWidth: 460, padding: "36px 32px", zIndex: 1, boxShadow: "0 40px 100px rgba(0,0,0,0.6)" }}>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>⚙️</div>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.2em", color: COLORS.primary, marginBottom: 8 }}>ADMINISTRATION</div>
+          <h1 style={{ color: COLORS.textDark, fontWeight: 900, fontSize: 24, margin: "0 0 8px" }}>Espace Admin Swift</h1>
+          <p style={{ color: COLORS.textMuted, fontSize: 13, margin: 0 }}>Accès réservé à l’administrateur principal</p>
+        </div>
+        <div style={{ background: "rgba(255,107,0,0.08)", border: "1px solid rgba(255,107,0,0.25)", borderRadius: 12, padding: "10px 14px", marginBottom: 20, display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <span style={{ fontSize: 16 }}>🔒</span>
+          <p style={{ color: "#FF8C35", fontSize: 12, margin: 0, lineHeight: 1.6, fontWeight: 600 }}>
+            Un seul compte administrateur existe sur cette plateforme. Seul l’email enregistré peut accéder à ce panneau.
+          </p>
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 700, marginBottom: 6, letterSpacing: "0.05em" }}>EMAIL ADMINISTRATEUR</div>
+          <input
+            type="email"
+            value={adminEmail}
+            onChange={(e) => { setAdminEmail(e.target.value); setAdminErreur(""); }}
+            onKeyDown={(e) => e.key === "Enter" && !adminLoading && loginPrincipalAdmin()}
+            placeholder={hintPrincipalEmail}
+            style={{ ...RF, width: "100%", background: COLORS.cardDark, border: `1.5px solid ${COLORS.borderDark}`, borderRadius: 12, padding: "13px 14px", color: COLORS.textDark, fontSize: 14, boxSizing: "border-box", outline: "none" }}
+          />
+        </div>
+        <div style={{ marginBottom: 20, position: "relative" }}>
+          <div style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: 700, marginBottom: 6, letterSpacing: "0.05em" }}>MOT DE PASSE</div>
+          <input
+            type={showAdminPass ? "text" : "password"}
+            value={adminPass}
+            onChange={(e) => { setAdminPass(e.target.value); setAdminErreur(""); }}
+            onKeyDown={(e) => e.key === "Enter" && !adminLoading && loginPrincipalAdmin()}
+            placeholder="••••••••••"
+            style={{ ...RF, width: "100%", background: COLORS.cardDark, border: `1.5px solid ${COLORS.borderDark}`, borderRadius: 12, padding: "13px 44px 13px 14px", color: COLORS.textDark, fontSize: 14, boxSizing: "border-box", outline: "none" }}
+          />
+          <button type="button" onClick={() => setShowAdminPass(!showAdminPass)} style={{ position: "absolute", right: 12, bottom: 10, background: "none", border: "none", cursor: "pointer", fontSize: 16 }}>
+            {showAdminPass ? "🙈" : "👁️"}
+          </button>
+        </div>
+        {adminErreur && (
+          <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 12, padding: "12px 14px", marginBottom: 16, color: COLORS.red, fontSize: 13, fontWeight: 600 }}>
+            {adminErreur}
+          </div>
+        )}
+        <Btn full disabled={adminLoading} onClick={loginPrincipalAdmin}>
+          {adminLoading ? "Vérification…" : "Accéder au panneau admin →"}
+        </Btn>
       </Card>
       <Btn size="sm" variant="ghost" style={{ position: "fixed", top: 12, left: 12 }} onClick={() => onBackToLanding && onBackToLanding()}>← Accueil</Btn>
     </div>
   );
 
   const Main = () => {
-    if (nav === "clients") return (
-      <div style={{ padding: 28, flex: 1 }}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}><h1 style={{ color: COLORS.textDark, fontWeight: 900 }}>Clients</h1><Btn size="sm">Exporter CSV</Btn></div>
-        <table style={{ width: "100%", marginTop: 16, borderCollapse: "collapse", fontSize: 13, color: COLORS.textDark }}>
-          <tbody>{MOCK_CLIENTS.map((c, i) => <tr key={c.id} style={{ background: i % 2 ? COLORS.cardDark : COLORS.surfaceDark }}><td style={{ padding: 10 }}>{c.nom}</td><td>{c.email}</td><td>{c.ville}</td><td>{c.cmd}</td><td><button type="button" onClick={() => setPanel(c)} style={{ ...RF, border: "none", background: "none", color: COLORS.primary, cursor: "pointer" }}>Voir</button></td></tr>)}</tbody>
-        </table>
-        <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 380, background: COLORS.cardDark, borderLeft: `1px solid ${COLORS.borderDark}`, transform: panel ? "translateX(0)" : "translateX(100%)", transition: "transform 0.3s", padding: 24, zIndex: 50, overflow: "auto" }}>
-          {panel && <><h3 style={{ color: COLORS.textDark }}>{panel.nom}</h3><p style={{ color: COLORS.textMuted }}>{panel.email}</p><Btn variant="danger" full>Bloquer</Btn><Btn variant="ghost" full style={{ marginTop: 8 }} onClick={() => setPanel(null)}>Fermer</Btn></>}
-        </div>
-      </div>
-    );
-    if (nav === "liv") return <div style={{ padding: 28, flex: 1, color: COLORS.textDark }}><h1 style={{ fontWeight: 900 }}>Livreurs</h1><table style={{ width: "100%", fontSize: 13 }}><tbody>{MOCK_LIVREURS.map((x, i) => <tr key={x.id} style={{ background: i % 2 ? COLORS.cardDark : "transparent" }}><td style={{ padding: 8 }}>{x.nom}</td><td>{x.vehicule}</td><td><Badge variant={x.ligne ? "success" : "muted"}>{x.statut}</Badge></td></tr>)}</tbody></table></div>;
-    if (nav === "ent") return <div style={{ padding: 28, flex: 1, color: COLORS.textDark }}><h1 style={{ fontWeight: 900 }}>Entreprises</h1><table style={{ width: "100%", fontSize: 13 }}><tbody>{MOCK_ENTREPRISES.map((x, i) => <tr key={x.id} style={{ background: i % 2 ? COLORS.cardDark : "transparent" }}><td style={{ padding: 8 }}>{x.nom}</td><td>{x.cat}</td><td>{mad(x.ca)}</td></tr>)}</tbody></table></div>;
-    if (nav === "cmd") return <div style={{ padding: 28, flex: 1, color: COLORS.textDark }}><h1 style={{ fontWeight: 900 }}>Commandes</h1><table style={{ width: "100%", fontSize: 12 }}><tbody>{MOCK_COMMANDES.map((o, i) => <tr key={o.id} style={{ background: i % 2 ? COLORS.cardDark : "transparent" }}><td style={{ padding: 8 }}>{o.id}</td><td>{o.client}</td><td>{eur(o.montant)}</td><td><button type="button" style={{ color: COLORS.primary, border: "none", background: "none", cursor: "pointer" }} onClick={() => setModal(o)}>Détail</button></td></tr>)}</tbody></table><Modal open={!!modal} onClose={() => setModal(null)}>{modal && <><h3 style={{ color: COLORS.textDark }}>{modal.id}</h3><p style={{ color: COLORS.textMuted }}>Timeline complète…</p><Btn full onClick={() => setModal(null)}>Fermer</Btn></>}</Modal></div>;
-    if (nav === "fin") return <div style={{ padding: 28, flex: 1 }}><h1 style={{ color: COLORS.textDark, fontWeight: 900 }}>Finances</h1><div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>{[["GMV", "48 230 €"], ["Comm.", "5 627 €"], ["Remb.", "120 €"], ["Net", "42 483 €"]].map(([a, b]) => <StatCard key={a} dark value={b} label={a} />)}</div></div>;
-    if (nav === "zone") return <div style={{ padding: 28, flex: 1, color: COLORS.textDark }}><h1 style={{ fontWeight: 900 }}>Zones</h1><Card dark style={{ padding: 120, textAlign: "center" }}>🗺️ Carte interactive (maquette)</Card></div>;
-    if (nav === "mkt") return <div style={{ padding: 28, flex: 1, color: COLORS.textDark }}><h1 style={{ fontWeight: 900 }}>Marketing</h1><Btn>Créer une promotion +</Btn></div>;
-    if (nav === "param") return <div style={{ padding: 28, flex: 1, color: COLORS.textDark }}><h1 style={{ fontWeight: 900 }}>Paramètres plateforme</h1><Toggle on onToggle={() => { }} /><span style={{ marginLeft: 8 }}>Maintenance</span></div>;
-    if (nav === "logs") return <div style={{ padding: 28, flex: 1, color: COLORS.textMuted, fontSize: 13 }}><h1 style={{ color: COLORS.textDark, fontWeight: 900 }}>Logs</h1>{["12:01 admin — Client bloqué", "11:58 admin — Promo créée"].map((l) => <div key={l}>{l}</div>)}</div>;
-    return (
-      <div style={{ padding: 28, flex: 1, background: COLORS.bgDark }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}><div style={{ fontWeight: 900, color: COLORS.textDark, fontSize: 20 }}>Vue d'ensemble</div><Badge variant="danger">3 alertes</Badge></div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 12 }}>
-          <StatCard dark value={effectiveStats.total_clients ?? totalClients} label="Total Clients" />
-          <StatCard dark value={`${livreursActifs}/${totalLivreurs}`} label="Livreurs actifs" />
-          <StatCard dark value={totalEntreprises} label="Entreprises" />
-          <StatCard dark value={entreprisesActives} label="Entreprises actives" />
-          <StatCard dark value={effectiveStats.total_orders ?? commandesAujourdhui} label="Commandes aujourd'hui" />
-          <StatCard dark value={`${gmvAujourdhui.toFixed(2)} MAD`} label="GMV aujourd'hui" sub={`Commission: ${commissionPercue.toFixed(2)} MAD`} />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 20, marginTop: 24 }}>
-          <Card dark style={{ padding: 20, height: 240 }}><div style={{ fontWeight: 800, color: COLORS.textDark, marginBottom: 12 }}>Revenus plateforme (30 j.)</div><svg width="100%" height="160" viewBox="0 0 300 120"><polyline fill="none" stroke={COLORS.primary} strokeWidth="2" points="0,100 50,80 100,90 150,40 200,50 250,30 300,20" /></svg></Card>
-          <Card dark style={{ padding: 16 }}>
-            <div style={{ fontWeight: 800, color: COLORS.textDark }}>Flux commandes</div>
-            {effectiveOrders.length === 0 ? (
-              <div style={{ color: "#7777A0", textAlign: "center", padding: 24, fontSize: 14 }}>Aucune commande pour l'instant</div>
-            ) : (
-              effectiveOrders.slice(0, 10).map((o) => <div key={o.id} style={{ fontSize: 12, padding: "8px 0", borderBottom: `1px solid ${COLORS.borderDark}` }}><span style={{ color: COLORS.primary }}>{o.id}</span> · {eur(o.total)} · <span style={{ color: COLORS.textMuted }}>{o.entreprise}</span></div>)
+    const badgeCmd = (s) => {
+      const st = adminStatutBadgeStyle(s);
+      return <span style={{ ...RF, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 50, background: st.bg, color: st.color, border: `1px solid ${st.bd}` }}>{adminStatutCommandeFr(s)}</span>;
+    };
+
+    if (nav === "clients") {
+      const layout = selClient ? "1fr 380px" : "1fr";
+      return (
+        <div style={{ padding: 24, flex: 1, display: "grid", gridTemplateColumns: layout, gap: 20, alignItems: "start" }}>
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h1 style={{ color: COLORS.textDark, fontWeight: 900, margin: 0 }}>Clients</h1>
+              <span style={{ color: COLORS.textMuted, fontSize: 13 }}>{clientTotal} client(s)</span>
+            </div>
+            <input value={clientSearch} onChange={(e) => { setClientSearch(e.target.value); setClientPage(1); }} placeholder="Rechercher nom ou email…" style={{ ...RF, width: "100%", padding: "12px 14px", borderRadius: 12, border: `1px solid ${COLORS.borderDark}`, background: COLORS.cardDark, color: COLORS.textDark, marginBottom: 16, boxSizing: "border-box" }} />
+            {!clientRows ? <div style={{ color: COLORS.textMuted }}>Chargement…</div> : clientRows.length === 0 ? <div style={{ color: COLORS.textMuted, textAlign: "center", padding: 48 }}>Aucun client</div> : clientRows.map((c) => (
+              <div key={c.id} onClick={() => setSelClient(c)} style={{ padding: "14px 18px", borderRadius: 14, marginBottom: 10, cursor: "pointer", border: `1px solid ${selClient?.id === c.id ? COLORS.primary : COLORS.borderDark}`, background: COLORS.cardDark, display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ width: 40, height: 40, borderRadius: "50%", background: "rgba(59,130,246,0.2)", color: COLORS.blue, display: "grid", placeItems: "center", fontWeight: 900 }}>{(c.nom || "?").charAt(0).toUpperCase()}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, color: COLORS.textDark }}>{c.nom}</div>
+                  <div style={{ fontSize: 12, color: COLORS.textMuted }}>{c.email} · {c.telephone}</div>
+                </div>
+                <div style={{ textAlign: "right", fontSize: 12, color: COLORS.textMuted }}>
+                  <div style={{ fontWeight: 800, color: COLORS.primary }}>{c.totalCommandes} cmd</div>
+                  <div>{eur(c.totalDepense)}</div>
+                </div>
+                <button type="button" onClick={async (e) => { e.stopPropagation(); if (!confirm("Supprimer ce client ? Les commandes associées seront supprimées.")) return; try { await adminFetch(`/swift-admin/clients/${c.id}`, { method: "DELETE" }); if (selClient?.id === c.id) setSelClient(null); await loadClients(clientPage, clientSearch); await loadDashboardStats(); } catch (_) {} }} style={{ ...RF, border: "1px solid rgba(239,68,68,0.35)", background: "rgba(239,68,68,0.1)", color: COLORS.red, borderRadius: 10, padding: "6px 10px", fontWeight: 700, cursor: "pointer" }}>Suppr</button>
+              </div>
+            ))}
+            {clientPages > 1 && (
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                {Array.from({ length: clientPages }, (_, i) => i + 1).map((p) => <button type="button" key={p} onClick={() => setClientPage(p)} style={{ ...RF, padding: "8px 14px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, background: p === clientPage ? COLORS.primary : COLORS.surfaceDark, color: p === clientPage ? "#fff" : COLORS.textMuted }}>{p}</button>)}
+              </div>
             )}
+          </div>
+          {selClient && (
+            <Card dark style={{ padding: 20, position: "sticky", top: 16, maxHeight: "calc(100vh - 100px)", overflow: "auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ fontWeight: 800, color: COLORS.textDark }}>Historique · {selClient.nom}</div>
+                <button type="button" onClick={() => setSelClient(null)} style={{ ...RF, background: "none", border: "none", color: COLORS.textMuted, cursor: "pointer", fontSize: 18 }}>✕</button>
+              </div>
+              {!clientHist ? <div style={{ color: COLORS.textMuted }}>Chargement…</div> : clientHist.length === 0 ? <div style={{ color: COLORS.textMuted }}>Aucune commande</div> : clientHist.map((cmd) => (
+                <div key={cmd.id} style={{ padding: 12, borderRadius: 12, background: COLORS.surfaceDark, marginBottom: 8, border: `1px solid ${COLORS.borderDark}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: COLORS.textMuted }}><span>#{cmd.id}</span><span>{cmd.createdAt ? new Date(cmd.createdAt).toLocaleString("fr-FR") : ""}</span></div>
+                  <div style={{ fontSize: 13, color: COLORS.textDark, marginTop: 6 }}>{cmd.entreprise?.nom || cmd.branch_name}</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>{badgeCmd(cmd.statut)}<b style={{ color: COLORS.green }}>{eur(cmd.total)}</b></div>
+                </div>
+              ))}
+            </Card>
+          )}
+        </div>
+      );
+    }
+
+    if (nav === "ent") {
+      const layout = selEnt ? "1fr 380px" : "1fr";
+      return (
+        <div style={{ padding: 24, flex: 1, display: "grid", gridTemplateColumns: layout, gap: 20, alignItems: "start" }}>
+          <div>
+            <h1 style={{ color: COLORS.textDark, fontWeight: 900, margin: "0 0 16px" }}>Entreprises</h1>
+            <input value={entSearch} onChange={(e) => setEntSearch(e.target.value)} placeholder="Rechercher…" style={{ ...RF, width: "100%", padding: "12px 14px", borderRadius: 12, border: `1px solid ${COLORS.borderDark}`, background: COLORS.cardDark, color: COLORS.textDark, marginBottom: 16, boxSizing: "border-box" }} />
+            {!entRows ? <div style={{ color: COLORS.textMuted }}>Chargement…</div> : entRows.length === 0 ? <div style={{ color: COLORS.textMuted, padding: 40 }}>Aucune entreprise</div> : entRows.map((e) => (
+              <div key={e.id} onClick={() => setSelEnt(e)} style={{ padding: "14px 18px", borderRadius: 14, marginBottom: 10, cursor: "pointer", border: `1px solid ${selEnt?.id === e.id ? COLORS.primary : COLORS.borderDark}`, background: COLORS.cardDark }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 800, color: COLORS.textDark }}>{e.nom}</div>
+                    <div style={{ fontSize: 12, color: COLORS.textMuted }}>{e.categorie}</div>
+                  </div>
+                  <div style={{ fontSize: 12, color: COLORS.textMuted, textAlign: "right" }}><div style={{ fontWeight: 800, color: COLORS.primary }}>{e.totalCommandes} cmd</div><div>{eur(e.revenus)} CA (livrées)</div></div>
+                  <Badge variant={e.is_active ? "success" : "danger"}>{e.statut === "valide" ? "Actif" : "Suspendu"}</Badge>
+                  <div style={{ display: "flex", gap: 6 }} onClick={(ev) => ev.stopPropagation()}>
+                    {!e.is_active && <Btn size="sm" onClick={async () => { try { await adminFetch(`/swift-admin/entreprises/${e.id}/valider`, { method: "PUT", body: "{}" }); await loadEntreprises(entSearch); await loadDashboardStats(); } catch (_) {} }}>Activer</Btn>}
+                    {e.is_active && <Btn size="sm" variant="danger" onClick={async () => { try { await adminFetch(`/swift-admin/entreprises/${e.id}/suspendre`, { method: "PUT", body: "{}" }); await loadEntreprises(entSearch); await loadDashboardStats(); } catch (_) {} }}>Suspendre</Btn>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {selEnt && (
+            <Card dark style={{ padding: 20, position: "sticky", top: 16, maxHeight: "calc(100vh - 100px)", overflow: "auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                <div style={{ fontWeight: 800, color: COLORS.textDark }}>Commandes · {selEnt.nom}</div>
+                <button type="button" onClick={() => setSelEnt(null)} style={{ ...RF, background: "none", border: "none", color: COLORS.textMuted, cursor: "pointer", fontSize: 18 }}>✕</button>
+              </div>
+              {!entHist ? <div style={{ color: COLORS.textMuted }}>Chargement…</div> : entHist.length === 0 ? <div style={{ color: COLORS.textMuted }}>Aucune commande</div> : entHist.map((cmd) => (
+                <div key={cmd.id} style={{ padding: 12, borderRadius: 12, background: COLORS.surfaceDark, marginBottom: 8, border: `1px solid ${COLORS.borderDark}` }}>
+                  <div style={{ fontSize: 11, color: COLORS.textMuted, display: "flex", justifyContent: "space-between" }}><span>#{cmd.id}</span><span>{cmd.createdAt ? new Date(cmd.createdAt).toLocaleString("fr-FR") : ""}</span></div>
+                  <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 6 }}>{cmd.client?.nom} · {cmd.client?.email}</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>{badgeCmd(cmd.statut)}<b style={{ color: COLORS.green }}>{eur(cmd.total)}</b></div>
+                </div>
+              ))}
+            </Card>
+          )}
+        </div>
+      );
+    }
+
+    if (nav === "liv") {
+      const layout = selLiv ? "1fr 380px" : "1fr";
+      const filtBtns = [["tous", "Tous"], ["en_attente", "En attente"], ["valide", "Validés"], ["suspendu", "Suspendus"]];
+      return (
+        <div style={{ padding: 24, flex: 1, display: "grid", gridTemplateColumns: layout, gap: 20, alignItems: "start" }}>
+          <div>
+            <h1 style={{ color: COLORS.textDark, fontWeight: 900, margin: "0 0 16px" }}>Livreurs Swift</h1>
+            <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+              {filtBtns.map(([v, lab]) => <button type="button" key={v} onClick={() => setLivFilt(v)} style={{ ...RF, padding: "8px 16px", borderRadius: 999, border: `1px solid ${livFilt === v ? COLORS.primary : COLORS.borderDark}`, background: livFilt === v ? COLORS.primaryGlow : COLORS.cardDark, color: livFilt === v ? COLORS.primary : COLORS.textMuted, fontWeight: 700, cursor: "pointer" }}>{lab}</button>)}
+            </div>
+            {!livRows ? <div style={{ color: COLORS.textMuted }}>Chargement…</div> : livRows.length === 0 ? <div style={{ color: COLORS.textMuted, padding: 40 }}>Aucun livreur</div> : livRows.map((l) => (
+              <div key={l.id} onClick={() => setSelLiv(l)} style={{ padding: "14px 18px", borderRadius: 14, marginBottom: 10, cursor: "pointer", border: `1px solid ${selLiv?.id === l.id ? COLORS.primary : COLORS.borderDark}`, background: COLORS.cardDark, display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ position: "relative" }}>
+                  <div style={{ width: 42, height: 42, borderRadius: "50%", background: "linear-gradient(135deg,#8B5CF6,#6D28D9)", color: "#fff", display: "grid", placeItems: "center", fontWeight: 900 }}>{(l.nom || "?").charAt(0).toUpperCase()}</div>
+                  {l.enLigne && <span style={{ position: "absolute", bottom: 0, right: 0, width: 10, height: 10, borderRadius: "50%", background: COLORS.green, border: `2px solid ${COLORS.cardDark}` }} />}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, color: COLORS.textDark }}>{l.prenom} {l.nom}</div>
+                  <div style={{ fontSize: 12, color: COLORS.textMuted }}>{l.email} · {l.vehicule}</div>
+                </div>
+                <Badge variant={l.statut === "valide" ? "success" : l.statut === "en_attente" ? "warning" : "danger"}>{livStatutFr(l.statut)}</Badge>
+                <div style={{ fontSize: 12, color: COLORS.textMuted, textAlign: "right" }}><div>{l.totalLivraisons} liv.</div><div>{eur(l.gainsTotal)}</div></div>
+                <div style={{ display: "flex", gap: 6 }} onClick={(ev) => ev.stopPropagation()}>
+                  {l.statut === "en_attente" && <Btn size="sm" onClick={async () => { try { await adminFetch(`/swift-admin/livreurs/${l.id}/valider`, { method: "PUT", body: "{}" }); await loadLivreurs(livFilt); await loadDashboardStats(); } catch (_) {} }}>Valider</Btn>}
+                  {l.statut !== "suspendu" && <Btn size="sm" variant="danger" onClick={async () => { try { await adminFetch(`/swift-admin/livreurs/${l.id}/suspendre`, { method: "PUT", body: "{}" }); await loadLivreurs(livFilt); await loadDashboardStats(); } catch (_) {} }}>Suspendre</Btn>}
+                  {l.statut === "suspendu" && <Btn size="sm" onClick={async () => { try { await adminFetch(`/swift-admin/livreurs/${l.id}/valider`, { method: "PUT", body: "{}" }); await loadLivreurs(livFilt); await loadDashboardStats(); } catch (_) {} }}>Réactiver</Btn>}
+                </div>
+              </div>
+            ))}
+          </div>
+          {selLiv && (
+            <Card dark style={{ padding: 20, position: "sticky", top: 16, maxHeight: "calc(100vh - 100px)", overflow: "auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                <div style={{ fontWeight: 800, color: COLORS.textDark }}>Livraisons · {selLiv.prenom} {selLiv.nom}</div>
+                <button type="button" onClick={() => setSelLiv(null)} style={{ ...RF, background: "none", border: "none", color: COLORS.textMuted, cursor: "pointer", fontSize: 18 }}>✕</button>
+              </div>
+              {!livHist ? <div style={{ color: COLORS.textMuted }}>Chargement…</div> : livHist.length === 0 ? <div style={{ color: COLORS.textMuted }}>Aucune livraison</div> : livHist.map((cmd) => (
+                <div key={cmd.id} style={{ padding: 12, borderRadius: 12, background: COLORS.surfaceDark, marginBottom: 8, border: `1px solid ${COLORS.borderDark}` }}>
+                  <div style={{ fontSize: 11, color: COLORS.textMuted, display: "flex", justifyContent: "space-between" }}><span>#{cmd.id}</span><span>{cmd.createdAt ? new Date(cmd.createdAt).toLocaleString("fr-FR") : ""}</span></div>
+                  <div style={{ fontSize: 13, color: COLORS.textDark, marginTop: 6 }}>{cmd.client?.nom} · {cmd.entreprise?.nom}</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>{badgeCmd(cmd.statut)}<b style={{ color: COLORS.green }}>{eur(cmd.total)}</b></div>
+                </div>
+              ))}
+            </Card>
+          )}
+        </div>
+      );
+    }
+
+    if (nav === "cmd") {
+      const rows = ordRows || [];
+      return (
+        <div style={{ padding: 24, flex: 1, color: COLORS.textDark }}>
+          <h1 style={{ fontWeight: 900, marginBottom: 16 }}>Commandes</h1>
+          {!ordRows ? <div style={{ color: COLORS.textMuted }}>Chargement…</div> : rows.length === 0 ? <div style={{ color: COLORS.textMuted }}>Aucune commande</div> : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {rows.map((o) => (
+                <div key={o.id} style={{ padding: "12px 16px", borderRadius: 14, background: COLORS.cardDark, border: `1px solid ${COLORS.borderDark}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, color: COLORS.primary }}>#{o.id}</div>
+                    <div style={{ fontSize: 12, color: COLORS.textMuted }}>{o.client_username || "—"} · {o.company_name || o.branch_name || "—"}</div>
+                  </div>
+                  {badgeCmd(o.status)}
+                  <div style={{ fontWeight: 900 }}>{eur(o.total_price)}</div>
+                  <button type="button" onClick={() => setAdminOrdModal(o)} style={{ ...RF, border: "none", background: COLORS.surfaceDark, color: COLORS.primary, padding: "6px 12px", borderRadius: 10, cursor: "pointer", fontWeight: 700 }}>Détail</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <Modal open={!!adminOrdModal} onClose={() => setAdminOrdModal(null)}>
+            {adminOrdModal && (
+              <div style={{ color: COLORS.textDark }}>
+                <h3 style={{ marginTop: 0 }}>Commande #{adminOrdModal.id}</h3>
+                <p style={{ color: COLORS.textMuted, fontSize: 13 }}>Statut : {adminStatutCommandeFr(adminOrdModal.status)} · {eur(adminOrdModal.total_price)}</p>
+                <p style={{ color: COLORS.textMuted, fontSize: 13 }}>Client : {adminOrdModal.client_username} {adminOrdModal.client_email ? `(${adminOrdModal.client_email})` : ""}</p>
+                <p style={{ color: COLORS.textMuted, fontSize: 13 }}>Point de vente : {adminOrdModal.branch_name} ({adminOrdModal.company_name})</p>
+                <Btn full onClick={() => setAdminOrdModal(null)}>Fermer</Btn>
+              </div>
+            )}
+          </Modal>
+        </div>
+      );
+    }
+
+    if (nav === "param") {
+      return (
+        <div style={{ padding: 28, flex: 1, color: COLORS.textDark }}>
+          <h1 style={{ fontWeight: 900, marginBottom: 20 }}>Paramètres</h1>
+          <AdminSwiftParametres adminEmail={adminEmail.trim() || hintPrincipalEmail} />
+          <div style={{ marginTop: 32 }}>
+            <div style={{ fontWeight: 800, marginBottom: 8 }}>Maintenance (maquette)</div>
+            <Toggle on onToggle={() => { }} /><span style={{ marginLeft: 8 }}>Mode maintenance</span>
+          </div>
+        </div>
+      );
+    }
+
+    const s = dashStats;
+    const flux = (ordRows || []).slice(0, 12).map((o) => ({ id: `#${o.id}`, total: o.total_price, entreprise: o.company_name || o.branch_name || "—" }));
+    return (
+      <div style={{ padding: 24, flex: 1, background: COLORS.bgDark }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+          <div style={{ fontWeight: 900, color: COLORS.textDark, fontSize: 20 }}>Vue d&apos;ensemble</div>
+          <div style={{ fontSize: 12, color: COLORS.textMuted }}>{dashBusy ? "Mise à jour…" : "Données réelles · rafraîchissement auto 30 s"}</div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+          <StatCard dark value={s?.clients?.total ?? "—"} label="Clients" />
+          <StatCard dark value={s?.entreprises?.total ?? "—"} label="Entreprises" sub={s ? `${s.entreprises.actives} actives` : ""} />
+          <StatCard dark value={s?.livreurs?.total ?? "—"} label="Livreurs Swift" sub={s ? `${s.livreurs.enLigne} avec course en cours` : ""} />
+          <StatCard dark value={s?.commandes?.aujourdhui ?? "—"} label="Commandes aujourd&apos;hui" sub={s ? `${s.commandes.enCours} en cours` : ""} />
+          <StatCard dark value={s?.commandes?.livrees ?? "—"} label="Commandes livrées" sub={s ? `Taux ${s.commandes.tauxReussite}%` : ""} />
+          <StatCard dark value={s ? eur(s.revenus.aujourdhui) : "—"} label="CA livré (jour)" sub={s ? `Mois : ${eur(s.revenus.mois)}` : ""} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18, marginTop: 22 }}>
+          <Card dark style={{ padding: 22 }}>
+            <div style={{ fontWeight: 800, color: COLORS.textDark, marginBottom: 16 }}>Commandes — 7 derniers jours</div>
+            <AdminMiniBarChart data={s?.graphique} />
+          </Card>
+          <Card dark style={{ padding: 22 }}>
+            <div style={{ fontWeight: 800, color: COLORS.textDark, marginBottom: 16 }}>Répartition statuts</div>
+            {s && [
+              ["En cours", s.commandes.enCours, COLORS.primary],
+              ["Livrées", s.commandes.livrees, COLORS.green],
+              ["Annulées", s.commandes.annulees, COLORS.red],
+            ].map(([lab, val, col]) => {
+              const pct = s.commandes.total > 0 ? (val / s.commandes.total) * 100 : 0;
+              return (
+                <div key={lab} style={{ marginBottom: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: COLORS.textMuted, marginBottom: 4 }}><span>{lab}</span><span style={{ color: col, fontWeight: 800 }}>{val}</span></div>
+                  <div style={{ height: 8, background: COLORS.borderDark, borderRadius: 99, overflow: "hidden" }}><div style={{ height: "100%", width: `${pct}%`, background: col, borderRadius: 99, transition: "width 0.5s ease" }} /></div>
+                </div>
+              );
+            })}
+            <div style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${COLORS.borderDark}` }}>
+              <div style={{ fontWeight: 800, marginBottom: 10, fontSize: 14 }}>Livreurs</div>
+              {s && [["En ligne (course)", s.livreurs.enLigne, COLORS.green], ["Validés", s.livreurs.valides, COLORS.blue], ["En attente", s.livreurs.enAttente, COLORS.yellow]].map(([a, b, c]) => (
+                <div key={a} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 8 }}><span style={{ color: COLORS.textMuted }}>{a}</span><span style={{ fontWeight: 900, color: c }}>{b}</span></div>
+              ))}
+            </div>
           </Card>
         </div>
+        <Card dark style={{ padding: 20, marginTop: 20 }}>
+          <div style={{ fontWeight: 800, color: COLORS.textDark, marginBottom: 12 }}>Dernières commandes</div>
+          {flux.length === 0 ? <div style={{ color: COLORS.textMuted, textAlign: "center", padding: 20 }}>Aucune commande</div> : flux.map((o) => <div key={o.id} style={{ fontSize: 12, padding: "8px 0", borderBottom: `1px solid ${COLORS.borderDark}` }}><span style={{ color: COLORS.primary }}>{o.id}</span> · {eur(o.total)} · <span style={{ color: COLORS.textMuted }}>{o.entreprise}</span></div>)}
+        </Card>
       </div>
     );
   };
@@ -1319,9 +2078,30 @@ function AdminAppPlatform({ initialScreen = "login", onBackToLanding, orders = [
     <div style={{ ...RF, display: "flex", minHeight: "100vh", background: COLORS.bgDark }}>
       <Side />
       <Main />
-      <Btn size="sm" variant="ghost" style={{ position: "fixed", top: 12, right: 12 }} onClick={() => setScreen("login")}>Déconnexion</Btn>
+      <Btn
+        size="sm"
+        variant="ghost"
+        style={{ position: "fixed", top: 12, right: 12 }}
+        onClick={async () => {
+          try {
+            await api(djangoPublicHref("/logout"), { method: "POST", body: "{}" });
+          } catch (_) {}
+          setAdminPass("");
+          setAdminErreur("");
+          setScreen("login");
+        }}
+      >
+        Déconnexion
+      </Btn>
       <Btn size="sm" variant="ghost" style={{ position: "fixed", top: 12, right: 100 }} onClick={() => onBackToLanding && onBackToLanding()}>← Accueil</Btn>
     </div>
   );
 }
 
+if (typeof document !== "undefined") {
+  const el = document.getElementById("root");
+  if (el) {
+    const root = ReactDOM.createRoot(el);
+    root.render(<SwiftMobileApp />);
+  }
+}

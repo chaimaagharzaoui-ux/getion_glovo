@@ -1,3 +1,5 @@
 django
 djangorestframework
 channels
+Pillow
+mysqlclient

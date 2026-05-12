@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Swift Livreur — Dashboard</title>
+<style>
+  @keyframes slideIn {
+    from { transform: translateX(-8px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50%     { opacity: 0.4; }
+  }
+  .slide-out {
+    opacity: 0 !important;
+    transform: translateX(30px) !important;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; }
+  body {
+    min-height: 100vh;
+    background: #09090F;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    color: #F0F0FA;
+    padding-bottom: 72px;
+  }
+  .hdr {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: #111118;
+    border-bottom: 1px solid #26263A;
+  }
+  .hdr .brand {
+    font-size: 18px;
+    font-weight: 900;
+    color: #FF6B00;
+  }
+  .hdr-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .dot-on {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22C55E;
+    flex-shrink: 0;
+  }
+  .lbl-ligne {
+    font-size: 12px;
+    font-weight: 600;
+    color: #F0F0FA;
+  }
+  .switch {
+    width: 46px;
+    height: 26px;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.2s;
+    padding: 0;
+  }
+  .switch.on { background: #22C55E; }
+  .switch.off { background: #374151; }
+  .switch .thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    transition: left 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .switch.on .thumb { left: 23px; }
+
+  .stats-banner {
+    background: #FF6B00;
+    border-radius: 18px;
+    margin: 16px;
+    padding: 18px 20px;
+  }
+  .stats-banner h2 {
+    font-size: 16px;
+    font-weight: 900;
+    color: #fff;
+    margin-bottom: 14px;
+  }
+  .stats-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .stat-item {
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.92);
+    flex: 1;
+    text-align: center;
+    min-width: 0;
+  }
+  .stat-sep {
+    width: 1px;
+    align-self: stretch;
+    min-height: 28px;
+    background: rgba(255,255,255,0.35);
+    flex-shrink: 0;
+  }
+
+  .sec-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #7777A0;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-left: 16px;
+    margin-bottom: 12px;
+    margin-top: 8px;
+  }
+  .zone {
+    min-height: 48px;
+    margin: 0 16px 24px;
+  }
+  .zone-empty {
+    min-height: 24px;
+  }
+  .empty-hint {
+    font-size: 13px;
+    color: #7777A0;
+    padding: 8px 4px;
+  }
+  .livree-line {
+    background: #18181F;
+    border: 1px solid #26263A;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: #7777A0;
+    animation: slideIn 0.3s ease;
+  }
+  .livree-line strong { color: #F0F0FA; font-weight: 700; }
+
+  .ticket {
+    background: #18181F;
+    border: 1.5px solid #FF6B00;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 0 18px rgba(255, 107, 0, 0.08);
+    animation: slideIn 0.3s ease;
+  }
+  .ticket-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .ticket-num {
+    font-size: 15px;
+    font-weight: 900;
+    color: #FF6B00;
+  }
+  .badge-new {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #FF6B00;
+    background: rgba(255, 107, 0, 0.15);
+    padding: 4px 10px;
+    border-radius: 50px;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  .ticket-sub {
+    font-size: 13px;
+    color: #7777A0;
+    margin-bottom: 12px;
+  }
+  .addr-block {
+    background: #111118;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+  }
+  .addr-block .al {
+    font-size: 10px;
+    font-weight: 700;
+    color: #7777A0;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .addr-block .cn { font-size: 13px; font-weight: 700; color: #F0F0FA; }
+  .addr-block .ar { font-size: 12px; color: #7777A0; margin-top: 4px; }
+
+  .stat-boxes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .stat-box {
+    background: #111118;
+    border-radius: 10px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+  .stat-box .k {
+    font-size: 10px;
+    font-weight: 700;
+    color: #7777A0;
+    margin-bottom: 4px;
+  }
+  .stat-box .v-g { font-size: 14px; font-weight: 900; color: #22C55E; }
+  .stat-box .v-w { font-size: 12px; font-weight: 800; color: #F0F0FA; }
+
+  .ticket-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .btn-ref {
+    border: 1.5px solid #EF4444;
+    background: rgba(239, 68, 68, 0.1);
+    color: #EF4444;
+    border-radius: 50px;
+    padding: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-acc {
+    border: none;
+    background: #22C55E;
+    color: #fff;
+    border-radius: 50px;
+    padding: 10px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .ticket-foot {
+    text-align: center;
+    font-size: 12px;
+    color: #7777A0;
+  }
+
+  .bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    display: flex;
+    background: #111118;
+    border-top: 1px solid #26263A;
+    padding: 6px 0 10px;
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-decoration: none;
+    color: #7777A0;
+    font-size: 11px;
+    font-weight: 600;
+    padding-top: 6px;
+    border-top: 2px solid transparent;
+  }
+  .nav-item .ic { font-size: 14px; line-height: 1; }
+  .nav-item.active {
+    color: #FF6B00;
+    border-top-color: #FF6B00;
+  }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="brand">⚡ Swift Livreur</div>
+  <div class="hdr-right">
+    <span class="dot-on" id="dot-stat" aria-hidden="true" style="background:{% if livreur.en_ligne %}#22C55E{% else %}#7777A0{% endif %}"></span>
+    <span class="lbl-ligne" id="txt-ligne">{% if livreur.en_ligne %}En ligne{% else %}Hors ligne{% endif %}</span>
+    <button type="button" class="switch {% if livreur.en_ligne %}on{% else %}off{% endif %}" id="sw-ligne" aria-label="Basculer en ligne">
+      <span class="thumb"></span>
+    </button>
+  </div>
+</header>
+
+<section class="stats-banner">
+  <h2>En ligne 🌐</h2>
+  <div class="stats-row">
+    <div class="stat-item">🛵 {{ total_livraisons }} livraisons</div>
+    <div class="stat-sep" aria-hidden="true"></div>
+    <div class="stat-item">💰 {{ gains_int }} €</div>
+    <div class="stat-sep" aria-hidden="true"></div>
+    <div class="stat-item">⭐ {{ note_moyenne_fr }}</div>
+  </div>
+</section>
+
+<h2 class="sec-title">Commandes en attente</h2>
+<div class="zone" id="zone-attente"></div>
+
+<h2 class="sec-title">Livrées aujourd'hui</h2>
+<div class="zone">
+  {% for c in commandes_livrees %}
+  <div class="livree-line">
+    <strong>{{ c.numero_sw }}</strong>
+    — {{ c.entreprise.nom }}
+    {% if c.client %}({{ c.client.prenom }}){% endif %}
+  </div>
+  {% empty %}
+  <div class="zone-empty" aria-hidden="true"></div>
+  {% endfor %}
+</div>
+
+<nav class="bottom-nav" aria-label="Navigation livreur">
+  <a class="nav-item active" href="{% url 'livreurs:dashboard' %}">
+    <span class="ic" aria-hidden="true">□</span>
+    Accueil
+  </a>
+  <span class="nav-item" style="cursor:default;">
+    <span class="ic" aria-hidden="true">□</span>
+    Livraisons
+  </span>
+  <span class="nav-item" style="cursor:default;">
+    <span class="ic" aria-hidden="true">□</span>
+    Gains
+  </span>
+  <span class="nav-item" style="cursor:default;">
+    <span class="ic" aria-hidden="true">□</span>
+    Profil
+  </span>
+</nav>
+
+{{ commandes_attente_data|json_script:"livreurs-init-data" }}
+<script>
+(function () {
+  var CSRF = '{{ csrf_token }}';
+  var LIV_BASE = '{% url "livreurs:dashboard" %}'.replace(/\/?dashboard\/?$/i, '/');
+  function urlAccepter(id) { return LIV_BASE + 'commandes/' + id + '/accepter/'; }
+  function urlRefuser(id) { return LIV_BASE + 'commandes/' + id + '/refuser/'; }
+  var URL_API = '{% url "livreurs:api_commandes_attente" %}';
+  var URL_TOGGLE = '{% url "livreurs:toggle_enligne" %}';
+
+  var zone = document.getElementById('zone-attente');
+  var sw = document.getElementById('sw-ligne');
+  var txtLigne = document.getElementById('txt-ligne');
+  var dot = document.getElementById('dot-stat');
+
+  function tempsEtDist(id) {
+    var a = 20 + (id % 4) * 5;
+    var b = 25 + (id % 4) * 5;
+    var km = 3 + (id % 5);
+    return { temps: a + '-' + b + ' min', dist: '~' + km + ' km' };
+  }
+
+  function renderTicket(c) {
+    var parts = c.client_nom.split(' ');
+    var prenom = parts[0] || '';
+    var nomRest = parts.slice(1).join(' ');
+    var td = tempsEtDist(c.id);
+    var num = c.numero_sw.indexOf('#') === 0 ? c.numero_sw : '#' + c.numero_sw;
+    var sub = c.entreprise + ' → ' + c.client_nom;
+    return (
+      '<article class="ticket" data-id="' + c.id + '">' +
+        '<div class="ticket-head">' +
+          '<span class="ticket-num">' + num + '</span>' +
+          '<span class="badge-new">Nouveau</span>' +
+        '</div>' +
+        '<div class="ticket-sub">' + sub + '</div>' +
+        '<div class="addr-block">' +
+          '<div class="al">📍 Livrer à</div>' +
+          '<div class="cn">' + prenom + (nomRest ? ' ' + nomRest : '') + '</div>' +
+          '<div class="ar">' + (c.adresse || '—') + '</div>' +
+        '</div>' +
+        '<div class="stat-boxes">' +
+          '<div class="stat-box"><div class="k">💰 Gain</div><div class="v-g">' + c.montant + ' €</div></div>' +
+          '<div class="stat-box"><div class="k">⏱ Temps</div><div class="v-w">' + td.temps + '</div></div>' +
+          '<div class="stat-box"><div class="k">📏 Distance</div><div class="v-w">' + td.dist + '</div></div>' +
+        '</div>' +
+        '<div class="ticket-actions">' +
+          '<button type="button" class="btn-ref" data-ref="' + c.id + '">❌ Refuser</button>' +
+          '<button type="button" class="btn-acc" data-acc="' + c.id + '">✅ Accepter</button>' +
+        '</div>' +
+        '<div class="ticket-foot">Détail livraison →</div>' +
+      '</article>'
+    );
+  }
+
+  function renderList(arr) {
+    if (!arr.length) {
+      zone.innerHTML = '<div class="zone-empty" aria-hidden="true"></div>';
+      return;
+    }
+    zone.innerHTML = arr.map(renderTicket).join('');
+    bindTicketBtns();
+  }
+
+  function bindTicketBtns() {
+    zone.querySelectorAll('[data-ref]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = parseInt(btn.getAttribute('data-ref'), 10);
+        var el = zone.querySelector('[data-id="' + id + '"]');
+        if (!el) return;
+        el.classList.add('slide-out');
+        fetch(urlRefuser(id), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF,
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: '{}'
+        }).then(function () {
+          setTimeout(function () {
+            el.remove();
+            if (!zone.querySelector('.ticket')) {
+              zone.innerHTML = '<div class="zone-empty" aria-hidden="true"></div>';
+            }
+          }, 320);
+        }).catch(function () {
+          el.classList.remove('slide-out');
+        });
+      };
+    });
+    zone.querySelectorAll('[data-acc]').forEach(function (btn) {
+      btn.onclick = function () {
+        var id = parseInt(btn.getAttribute('data-acc'), 10);
+        fetch(urlAccepter(id), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+          },
+          body: '{}'
+        }).then(function (r) {
+          if (r.status === 409) {
+            return r.json().then(function () { poll(); });
+          }
+          if (!r.ok) throw new Error('accepter');
+          return r.json();
+        }).then(function (data) {
+          if (data && data.redirect) {
+            window.location.href = data.redirect;
+          }
+        }).catch(function () {});
+      };
+    });
+  }
+
+  function poll() {
+    fetch(URL_API, { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        renderList(data.commandes || []);
+      })
+      .catch(function () {});
+  }
+
+  var raw = document.getElementById('livreurs-init-data');
+  try {
+    renderList(JSON.parse(raw ? raw.textContent || '[]' : '[]'));
+  } catch (e) {
+    poll();
+  }
+
+  setInterval(poll, 10000);
+
+  function setSwitch(on) {
+    sw.classList.toggle('on', on);
+    sw.classList.toggle('off', !on);
+    txtLigne.textContent = on ? 'En ligne' : 'Hors ligne';
+    dot.style.background = on ? '#22C55E' : '#7777A0';
+  }
+
+  sw.addEventListener('click', function () {
+    var on = !sw.classList.contains('on');
+    setSwitch(on);
+    fetch(URL_TOGGLE, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({ en_ligne: on })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('toggle');
+      return r.json();
+    }).then(function (j) {
+      if (typeof j.en_ligne === 'boolean') setSwitch(j.en_ligne);
+    }).catch(function () {
+      setSwitch(!on);
+    });
+  });
+})();
+</script>
+</body>
+</html>

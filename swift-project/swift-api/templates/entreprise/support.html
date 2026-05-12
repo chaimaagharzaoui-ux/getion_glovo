@@ -1,0 +1,29 @@
+{% extends "entreprise/base_entreprise.html" %}
+{% block entreprise_content %}
+<h2 style="margin:0;font-size:24px;font-weight:900;">Support</h2>
+<form method="post" style="margin-top:14px;background:#fff;border:1px solid #eee;border-radius:16px;padding:16px;">
+  {% csrf_token %}
+  <div style="display:grid;grid-template-columns:220px 1fr auto;gap:8px;">
+    <select name="sujet" style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+      <option value="commande">Probleme commande</option>
+      <option value="facturation">Facturation</option>
+      <option value="technique">Technique</option>
+      <option value="autre">Autre</option>
+    </select>
+    <input name="message" placeholder="Votre message..." required style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+    <button style="background:#FF6B00;color:#fff;border:none;border-radius:8px;padding:10px 14px;font-weight:700;">Envoyer</button>
+  </div>
+</form>
+<div style="margin-top:14px;background:#fff;border:1px solid #eee;border-radius:16px;padding:16px;">
+  <div style="font-weight:800;margin-bottom:8px;">Historique tickets</div>
+  {% for t in tickets %}
+    <div style="padding:10px 0;border-bottom:1px solid #f3f3f3;">
+      <div style="font-size:13px;color:#888;">{{ t.created_at|date:"d/m/Y H:i" }} - {{ t.get_sujet_display }}</div>
+      <div>{{ t.message }}</div>
+      <span style="display:inline-block;margin-top:4px;padding:3px 8px;border-radius:999px;background:{% if t.statut == 'ouvert' %}#fff7ed{% else %}#ecfdf5{% endif %};color:{% if t.statut == 'ouvert' %}#c2410c{% else %}#166534{% endif %};font-size:12px;">{{ t.get_statut_display }}</span>
+    </div>
+  {% empty %}
+    <div style="color:#888;">Aucun ticket.</div>
+  {% endfor %}
+</div>
+{% endblock %}

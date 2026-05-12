@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Espace livreur — Swift</title>
+<style>
+  @keyframes slideIn {
+    from { transform: translateX(-8px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50%     { opacity: 0.4; }
+  }
+  .slide-out {
+    opacity: 0 !important;
+    transform: translateX(30px) !important;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: #09090F;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    color: #F0F0FA;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  .top-brand {
+    text-align: center;
+    margin-bottom: 28px;
+    animation: slideIn 0.35s ease;
+  }
+  .top-brand .swift {
+    font-size: 22px;
+    font-weight: 900;
+    color: #FF6B00;
+    letter-spacing: -0.02em;
+  }
+  .top-brand .tag {
+    font-size: 11px;
+    font-weight: 600;
+    color: #7777A0;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-top: 6px;
+  }
+  .card {
+    background: #18181F;
+    border: 1px solid #26263A;
+    border-radius: 24px;
+    padding: 32px;
+    width: 100%;
+    max-width: 420px;
+    animation: slideIn 0.4s ease;
+  }
+  .card h1 {
+    font-size: 22px;
+    font-weight: 900;
+    color: #F0F0FA;
+    margin-bottom: 8px;
+  }
+  .card .sub {
+    font-size: 13px;
+    color: #7777A0;
+    margin-bottom: 24px;
+    line-height: 1.45;
+  }
+  .field-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #7777A0;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
+  }
+  .input-wrap {
+    position: relative;
+    margin-bottom: 18px;
+  }
+  .input-wrap input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid #26263A;
+    background: #111118;
+    color: #F0F0FA;
+    font-size: 15px;
+  }
+  .input-wrap input:focus {
+    outline: none;
+    border-color: #FF6B00;
+  }
+  .input-wrap .eye {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px;
+    color: #7777A0;
+  }
+  .erreur {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid #EF4444;
+    color: #EF4444;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
+    margin-bottom: 18px;
+  }
+  .btn-connect {
+    width: 100%;
+    border: none;
+    border-radius: 50px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 800;
+    background: #FF6B00;
+    color: #fff;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .btn-connect:hover { filter: brightness(1.05); }
+  .join {
+    text-align: center;
+    margin-top: 22px;
+    font-size: 14px;
+    color: #7777A0;
+  }
+  .join a {
+    color: #FF6B00;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .join a:hover { text-decoration: underline; }
+  .hint-below {
+    text-align: center;
+    font-size: 12px;
+    color: #7777A0;
+    margin-top: 28px;
+    max-width: 420px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="top-brand">
+  <div class="swift">⚡ Swift</div>
+  <div class="tag">LIVRAISON EXPRESS</div>
+</div>
+
+<div class="card">
+  <h1>Espace Livreur 🛵</h1>
+  <p class="sub">Connectez-vous pour recevoir des commandes</p>
+
+  {% if erreur %}
+  <div class="erreur">{{ erreur }}</div>
+  {% endif %}
+
+  <form method="post" action="">
+    {% csrf_token %}
+    <label class="field-label" for="id_email">EMAIL</label>
+    <div class="input-wrap">
+      <input id="id_email" name="email" type="email" autocomplete="username"
+        value="ahmed@swift.ma" required>
+    </div>
+
+    <label class="field-label" for="id_mdp">MOT DE PASSE</label>
+    <div class="input-wrap">
+      <input id="id_mdp" name="mot_de_passe" type="password" autocomplete="current-password"
+        placeholder="•••••••" required>
+      <button type="button" class="eye" id="toggle-eye" aria-label="Afficher le mot de passe">👁</button>
+    </div>
+
+    <button type="submit" class="btn-connect">Se connecter</button>
+  </form>
+
+  <p class="join">
+    Pas encore livreur ?
+    <a href="{% url 'home' %}">Rejoindre Swift →</a>
+  </p>
+</div>
+
+<p class="hint-below">Essayez avec n'importe quel email/mdp pour tester</p>
+
+<script>
+(function () {
+  var inp = document.getElementById('id_mdp');
+  var eye = document.getElementById('toggle-eye');
+  if (!inp || !eye) return;
+  eye.addEventListener('click', function () {
+    if (inp.type === 'password') {
+      inp.type = 'text';
+    } else {
+      inp.type = 'password';
+    }
+  });
+})();
+</script>
+</body>
+</html>

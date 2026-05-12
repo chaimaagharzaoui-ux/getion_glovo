@@ -1,0 +1,63 @@
+{% extends "entreprise/base_entreprise.html" %}
+{% block title %}Paramètres — Swift{% endblock %}
+{% block content %}
+<div class="page-title" style="margin-bottom:24px;">
+  ⚙️ Paramètres
+</div>
+{% if messages %}
+  {% for m in messages %}
+  <div style="background:#e8f5e9;border:1px solid #22C55E;
+              border-radius:10px;padding:12px 16px;
+              color:#2e7d32;font-weight:600;
+              margin-bottom:16px;">{{ m }}</div>
+  {% endfor %}
+{% endif %}
+<div class="card" style="max-width:520px;">
+  <form method="post">
+    {% csrf_token %}
+    <div style="margin-bottom:16px;">
+      <label style="display:block;font-size:11px;
+                    font-weight:700;color:#999;
+                    text-transform:uppercase;
+                    letter-spacing:.08em;
+                    margin-bottom:6px;">
+        Nom entreprise
+      </label>
+      <input type="text" name="nom"
+             value="{{ entreprise.nom }}"
+             style="width:100%;padding:12px 16px;
+                    border:1.5px solid #ddd;
+                    border-radius:12px;font-size:14px;">
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="display:block;font-size:11px;
+                    font-weight:700;color:#999;
+                    text-transform:uppercase;
+                    letter-spacing:.08em;margin-bottom:6px;">
+        Téléphone
+      </label>
+      <input type="text" name="telephone"
+             value="{{ entreprise.telephone }}"
+             style="width:100%;padding:12px 16px;
+                    border:1.5px solid #ddd;
+                    border-radius:12px;font-size:14px;">
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-size:11px;
+                    font-weight:700;color:#999;
+                    text-transform:uppercase;
+                    letter-spacing:.08em;margin-bottom:6px;">
+        Adresse
+      </label>
+      <textarea name="adresse" rows="3"
+        style="width:100%;padding:12px 16px;
+               border:1.5px solid #ddd;
+               border-radius:12px;font-size:14px;
+               resize:vertical;">{{ entreprise.adresse }}</textarea>
+    </div>
+    <button type="submit" class="btn-orange">
+      Sauvegarder ✅
+    </button>
+  </form>
+</div>
+{% endblock %}

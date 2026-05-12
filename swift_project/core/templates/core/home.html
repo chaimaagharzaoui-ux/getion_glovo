@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Swift — Choisissez votre rôle</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0;
+      font-family:'Segoe UI',sans-serif; }
+  body {
+    min-height: 100vh; background: #f5f4f0;
+    display: flex; align-items: center;
+    justify-content: center; padding: 40px 24px;
+  }
+  .container { max-width: 900px; width: 100%; }
+  .label {
+    font-size: 12px; font-weight: 700;
+    color: #FF6B00; letter-spacing: 0.1em;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  h1 {
+    font-size: 30px; font-weight: 900;
+    color: #1a1a1a; margin-bottom: 32px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 16px;
+  }
+  .role-card {
+    background: white; border-radius: 16px;
+    border: 2px solid #eee; padding: 28px 20px;
+    text-decoration: none; cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    display: block;
+  }
+  .role-card:hover {
+    border-color: #FF6B00;
+    box-shadow: 0 0 0 4px rgba(255,107,0,0.08);
+  }
+  .role-icon { font-size: 36px; margin-bottom: 14px; }
+  .role-title {
+    font-size: 16px; font-weight: 800;
+    color: #1a1a1a; margin-bottom: 6px;
+  }
+  .role-desc {
+    font-size: 13px; color: #777; margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  .role-link {
+    color: #FF6B00; font-weight: 700; font-size: 14px;
+  }
+  @media (max-width: 700px) {
+    .grid { grid-template-columns: repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="label">Choisissez votre rôle</div>
+  <h1>Accédez à l'interface qui vous correspond</h1>
+  <div class="grid">
+
+    <a href="/clients/login/" class="role-card">
+      <div class="role-icon">👤</div>
+      <div class="role-title">Client</div>
+      <div class="role-desc">
+        Commander et suivre vos livraisons
+      </div>
+      <div class="role-link">Accéder →</div>
+    </a>
+
+    <a href="/livreurs/login/" class="role-card">
+      <div class="role-icon">🛵</div>
+      <div class="role-title">Livreur</div>
+      <div class="role-desc">
+        Accepter et livrer les commandes
+      </div>
+      <div class="role-link">Accéder →</div>
+    </a>
+
+    <a href="/entreprise/login/" class="role-card">
+      <div class="role-icon">🏪</div>
+      <div class="role-title">Entreprise</div>
+      <div class="role-desc">
+        Gérer catalogue et commandes
+      </div>
+      <div class="role-link">Accéder →</div>
+    </a>
+
+    <a href="/admin/" class="role-card">
+      <div class="role-icon">⚙️</div>
+      <div class="role-title">Admin</div>
+      <div class="role-desc">
+        Superviser la plateforme Swift
+      </div>
+      <div class="role-link">Accéder →</div>
+    </a>
+
+  </div>
+</div>
+</body>
+</html>

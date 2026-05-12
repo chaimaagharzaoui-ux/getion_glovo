@@ -1,0 +1,70 @@
+{% extends "entreprise/base_entreprise.html" %}
+{% block title %}Paramètres — Swift{% endblock %}
+{% block content %}
+<div class="page-parametres">
+  <h2 class="page-heading">Paramètres de l'entreprise</h2>
+
+  <section class="panel">
+    <h3 class="panel-title">Informations générales</h3>
+    <form method="post" enctype="multipart/form-data" class="stack-form">
+      {% csrf_token %}
+      <input type="hidden" name="save_entreprise" value="1">
+      <label class="lbl">{{ form.nom.label }}</label>
+      {{ form.nom }}
+      {% if form.nom.errors %}<p class="field-error">{{ form.nom.errors.0 }}</p>{% endif %}
+
+      <label class="lbl">{{ form.email.label }}</label>
+      {{ form.email }}
+      {% if form.email.errors %}<p class="field-error">{{ form.email.errors.0 }}</p>{% endif %}
+
+      <label class="lbl">{{ form.telephone.label }}</label>
+      {{ form.telephone }}
+
+      <label class="lbl">{{ form.adresse.label }}</label>
+      {{ form.adresse }}
+
+      <div class="form-row-2">
+        <div>
+          <label class="lbl">{{ form.horaire_ouverture.label }}</label>
+          {{ form.horaire_ouverture }}
+        </div>
+        <div>
+          <label class="lbl">{{ form.horaire_fermeture.label }}</label>
+          {{ form.horaire_fermeture }}
+        </div>
+      </div>
+
+      <label class="lbl">{{ form.logo.label }}</label>
+      {% if entreprise.logo %}
+      <p class="current-logo"><img src="{{ entreprise.logo.url }}" alt="Logo" class="logo-preview"></p>
+      {% endif %}
+      {{ form.logo }}
+
+      <button type="submit" class="btn-orange">Enregistrer les modifications</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h3 class="panel-title">Changer le mot de passe</h3>
+    <form method="post" class="stack-form">
+      {% csrf_token %}
+      <input type="hidden" name="save_password" value="1">
+      <label class="lbl">{{ pwd_form.ancien.label }}</label>
+      {{ pwd_form.ancien }}
+      {% if pwd_form.ancien.errors %}<p class="field-error">{{ pwd_form.ancien.errors.0 }}</p>{% endif %}
+
+      <label class="lbl">{{ pwd_form.nouveau.label }}</label>
+      {{ pwd_form.nouveau }}
+
+      <label class="lbl">{{ pwd_form.confirmation.label }}</label>
+      {{ pwd_form.confirmation }}
+      {% if pwd_form.confirmation.errors %}<p class="field-error">{{ pwd_form.confirmation.errors.0 }}</p>{% endif %}
+      {% if pwd_form.non_field_errors %}
+        <p class="field-error">{{ pwd_form.non_field_errors.0 }}</p>
+      {% endif %}
+
+      <button type="submit" class="btn-orange">Mettre à jour le mot de passe</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

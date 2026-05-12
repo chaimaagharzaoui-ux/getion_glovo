@@ -1,0 +1,119 @@
+{% extends "entreprise/base_entreprise.html" %}
+{% block title %}Statistiques — Swift{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+{% block content %}
+<div class="page-stats">
+  <h2 class="page-heading">Statistiques</h2>
+  <p class="page-lead">Données en temps réel depuis votre activité (mise à jour au chargement).</p>
+
+  <div class="charts-grid">
+    <div class="panel chart-panel">
+      <h3 class="chart-title">CA des 7 derniers jours (MAD)</h3>
+      <canvas id="chart-ca"></canvas>
+    </div>
+    <div class="panel chart-panel">
+      <h3 class="chart-title">Répartition des statuts</h3>
+      <canvas id="chart-statuts"></canvas>
+    </div>
+    <div class="panel chart-panel chart-panel-wide">
+      <h3 class="chart-title">Commandes par heure (30 derniers jours)</h3>
+      <canvas id="chart-heures"></canvas>
+    </div>
+    <div class="panel chart-panel chart-panel-wide">
+      <h3 class="chart-title">Évolution note moyenne (30 jours)</h3>
+      <canvas id="chart-notes"></canvas>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function() {
+  const apiUrl = "{% url 'api_statistiques' %}";
+  const orange = '#FF6B00';
+  const orangeLight = 'rgba(255, 107, 0, 0.2)';
+
+  fetch(apiUrl, { headers: { 'Accept': 'application/json' } })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      /* Graphique 1 — CA */
+      new Chart(document.getElementById('chart-ca'), {
+        type: 'line',
+        data: {
+          labels: d.ca_labels,
+          datasets: [{
+            label: 'CA (MAD)',
+            data: d.ca_data,
+            borderColor: orange,
+            backgroundColor: orangeLight,
+            fill: true,
+            tension: 0.35,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      /* Graphique 2 — Donut statuts */
+      new Chart(document.getElementById('chart-statuts'), {
+        type: 'doughnut',
+        data: {
+          labels: d.statut_labels,
+          datasets: [{
+            data: d.statut_data,
+            backgroundColor: ['#FF6B00', '#3B82F6', '#60A5FA', '#1D4ED8', '#888888'],
+          }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+      });
+
+      /* Graphique 3 — Barres heures */
+      new Chart(document.getElementById('chart-heures'), {
+        type: 'bar',
+        data: {
+          labels: d.heure_labels,
+          datasets: [{
+            label: 'Commandes',
+            data: d.heure_data,
+            backgroundColor: orange,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      /* Graphique 4 — Notes */
+      new Chart(document.getElementById('chart-notes'), {
+        type: 'line',
+        data: {
+          labels: d.note_labels,
+          datasets: [{
+            label: 'Note moyenne',
+            data: d.note_data,
+            borderColor: orange,
+            backgroundColor: orangeLight,
+            fill: true,
+            tension: 0.35,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { min: 0, max: 5 } }
+        }
+      });
+    })
+    .catch(function(err) {
+      console.error('api_statistiques', err);
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "entreprise/base_entreprise.html" %}
+{% block title %}Commandes — Swift{% endblock %}
+{% block content %}
+<div class="page-commandes">
+  <div class="filter-bar">
+    {% for code, label in statuts_filtres %}
+    <a href="?statut={{ code }}"
+       class="filter-btn {% if statut_actif == code %}filter-btn-active{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
+
+  <section class="panel panel-table">
+    <div class="table-responsive">
+      <table class="data-table data-table-commandes">
+        <thead>
+          <tr>
+            <th>N°</th>
+            <th>Client</th>
+            <th>Montant</th>
+            <th>Date</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in page_obj %}
+          <tr data-commande-id="{{ c.id }}">
+            <td>{{ c.numero }}</td>
+            <td>{{ c.client_nom }}</td>
+            <td>{{ c.montant }} MAD</td>
+            <td>{{ c.created_at|date:"d/m/Y H:i" }}</td>
+            <td>
+              <div class="statut-cell">
+                <span class="cmd-badge {% if c.statut == 'livree' %}badge-blue{% elif c.statut == 'en_livraison' %}badge-blue-light{% elif c.statut == 'en_preparation' %}badge-blue-dark{% elif c.statut == 'annulee' %}badge-gray{% else %}badge-orange{% endif %}"
+                      data-role="statut-badge"
+                      id="badge-{{ c.id }}">{{ c.get_statut_display }}</span>
+                <select class="statut-select inp-select"
+                        data-commande-id="{{ c.id }}"
+                        data-changer-url="{% url 'changer_statut' id=c.id %}">
+                  {% for val, lib in statuts_choices %}
+                  <option value="{{ val }}" {% if c.statut == val %}selected{% endif %}>{{ lib }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="cell-empty">Aucune commande.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="pagination" aria-label="Pagination">
+      {% if page_obj.has_previous %}
+      <a href="?statut={{ statut_actif }}&page={{ page_obj.previous_page_number }}" class="page-link">← Précédent</a>
+      {% endif %}
+      <span class="page-info">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+      <a href="?statut={{ statut_actif }}&page={{ page_obj.next_page_number }}" class="page-link">Suivant →</a>
+      {% endif %}
+    </nav>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

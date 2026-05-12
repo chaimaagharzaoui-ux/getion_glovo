@@ -1,0 +1,13 @@
+{% extends "entreprise/base_entreprise.html" %}
+{% block entreprise_content %}
+<h2 style="margin:0;font-size:24px;font-weight:900;">Paramètres</h2>
+<form method="post" style="margin-top:14px;background:#fff;border:1px solid #eee;border-radius:16px;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+  {% csrf_token %}
+  <div><label>Nom entreprise</label><input name="nom" value="{{ entreprise.nom }}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;"></div>
+  <div><label>Email</label><input name="email" value="{{ entreprise.email }}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;"></div>
+  <div><label>Téléphone</label><input name="telephone" value="{{ entreprise.telephone }}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;"></div>
+  <div><label>Adresse</label><input name="adresse" value="{{ entreprise.adresse }}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;"></div>
+  <div><label>Nouveau mot de passe</label><input type="password" name="nouveau_mot_de_passe" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;"></div>
+  <div style="display:flex;align-items:flex-end;"><button style="background:#FF6B00;color:#fff;border:none;border-radius:10px;padding:10px 14px;font-weight:700;">Enregistrer</button></div>
+</form>
+{% endblock %}

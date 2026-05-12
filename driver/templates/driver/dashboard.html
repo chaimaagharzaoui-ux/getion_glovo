@@ -1,0 +1,274 @@
+{% extends "users/base.html" %}
+{% block title %}Tableau de bord livreur{% endblock %}
+{% block page_title %}Bonjour {{ driver.first_name }}{% endblock %}
+{% block page_subtitle %}{{ driver.get_vehicle_display }} · Commandes en temps réel{% endblock %}
+{% block content %}
+<style>
+  /* Thème sombre livreur (réf. Admin Swift) — uniquement sur cette page */
+  body:has(.dash-wrap) {
+    background: #0f0f12 !important;
+    color: #ffffff;
+  }
+  body:has(.dash-wrap) .topbar {
+    background: #0f0f12;
+    border-bottom: 1px solid #2d2d3a;
+  }
+  body:has(.dash-wrap) .container .hero {
+    background: #1c1c24;
+    border: 1px solid #2d2d3a;
+    box-shadow: none;
+    color: #ffffff;
+  }
+  body:has(.dash-wrap) .container .hero h1 { color: #ffffff; }
+  body:has(.dash-wrap) .container .hero p { color: #8a8a9e; }
+  body:has(.dash-wrap) .badge {
+    background: rgba(255, 107, 0, 0.2);
+    color: #ff6b00;
+  }
+
+  .dash-wrap { display: flex; gap: 0; min-height: 60vh; }
+  .dash-side {
+    width: 220px; flex-shrink: 0; background: #1c1c24; border: 1px solid #2d2d3a;
+    border-radius: 16px; padding: 18px 14px; margin-right: 16px;
+  }
+  .dash-side h3 { font-size: 12px; color: #8a8a9e; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .dash-side .count { font-size: 26px; font-weight: 900; color: #ff6b00; }
+  .dash-side .count.ok { color: #22c55e; }
+  .dash-side .count.no { color: #ef4444; }
+  .dash-main { flex: 1; min-width: 0; }
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+  .stat-card {
+    background: #1c1c24; border: 1px solid #2d2d3a; border-radius: 14px; padding: 16px;
+    text-align: center; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  }
+  .stat-card .n { font-size: 28px; font-weight: 900; color: #ff6b00; }
+  .stat-card .l { font-size: 11px; color: #8a8a9e; font-weight: 700; margin-top: 4px; }
+  .tabs-dash { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tabs-dash button {
+    padding: 10px 16px; border-radius: 999px; border: 1px solid #2d2d3a; background: #1c1c24; color: #ffffff;
+    font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+  .tabs-dash button.active { background: #ff6b00; color: #ffffff; border-color: #ff6b00; }
+  .sec { display: none; }
+  .sec.active { display: block; }
+  .card-o {
+    background: #1c1c24; border: 1px solid #2d2d3a; border-radius: 14px; padding: 14px;
+    margin-bottom: 10px; color: #ffffff;
+  }
+  .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; }
+  .badge-c { background: rgba(34, 197, 94, 0.18); color: #4ade80; }
+  .badge-l { background: rgba(59, 130, 246, 0.18); color: #60a5fa; }
+  .badge-r { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+  .btn-go { padding: 8px 14px; border-radius: 10px; border: none; background: #22c55e; color: #ffffff; font-weight: 800; cursor: pointer; }
+  .btn-no { padding: 8px 14px; border-radius: 10px; border: 1px solid #ef4444; background: rgba(239, 68, 68, 0.12); color: #f87171; font-weight: 800; cursor: pointer; }
+  .btn-done { width: 100%; margin-top: 10px; padding: 10px; border: none; border-radius: 10px; background: #ff6b00; color: #ffffff; font-weight: 800; cursor: pointer; }
+  .notif-wrap { position: fixed; top: 80px; right: 16px; width: 320px; max-width: calc(100vw - 32px); z-index: 200; display: flex; flex-direction: column; gap: 10px; }
+  .notif { background: #1c1c24; border: 2px solid #ff6b00; border-radius: 12px; padding: 14px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45); color: #ffffff; }
+  .notif strong { color: #ffffff; }
+  @media (max-width: 900px) { .dash-wrap { flex-direction: column; } .dash-side { width: 100%; margin-right: 0; } .stat-row { grid-template-columns: 1fr; } }
+</style>
+
+<div class="dash-wrap">
+  <aside class="dash-side">
+    <div style="font-weight:900;color:#ff6b00;margin-bottom:10px;">⚡ Swift</div>
+    <p style="font-size:13px;color:#8a8a9e;margin:0 0 16px;">
+      {{ driver.first_name }} {{ driver.last_name }}<br>
+      <small>{{ driver.get_vehicle_display }}</small>
+    </p>
+    <h3>En cours</h3>
+    <div class="count" id="c-cur">0</div>
+    <h3 style="margin-top:16px;">Livrées</h3>
+    <div class="count ok" id="c-liv">0</div>
+    <h3 style="margin-top:16px;">Rejetées</h3>
+    <div class="count no" id="c-rej">0</div>
+    <p style="margin-top:20px;"><a href="{% url 'driver:driver_logout' %}" style="color:#ff6b00;font-size:13px;font-weight:600;">Déconnexion</a></p>
+  </aside>
+  <div class="dash-main">
+    <div class="stat-row">
+      <div class="stat-card"><div class="n" id="s-cur">0</div><div class="l">En cours</div></div>
+      <div class="stat-card"><div class="n" id="s-liv" style="color:#22c55e;">0</div><div class="l">Livrées</div></div>
+      <div class="stat-card"><div class="n" id="s-rej" style="color:#ef4444;">0</div><div class="l">Rejetées</div></div>
+    </div>
+    <div class="tabs-dash">
+      <button type="button" class="active" data-sec="cur">Commandes actuelles</button>
+      <button type="button" data-sec="liv">Livrées</button>
+      <button type="button" data-sec="rej">Rejetées</button>
+    </div>
+    <section class="sec active" id="sec-cur"><div id="list-cur"></div></section>
+    <section class="sec" id="sec-liv"><div id="list-liv"></div></section>
+    <section class="sec" id="sec-rej"><div id="list-rej"></div></section>
+  </div>
+</div>
+
+<div class="notif-wrap" id="notifs" aria-live="polite"></div>
+
+{{ current_orders|json_script:"data-current" }}
+{{ delivered_orders|json_script:"data-delivered" }}
+{{ rejected_orders|json_script:"data-rejected" }}
+
+<script>
+(function() {
+  function parseEl(id) {
+    var el = document.getElementById(id);
+    if (!el || !el.textContent) return [];
+    try { return JSON.parse(el.textContent); } catch (e) { return []; }
+  }
+  var state = {
+    current: parseEl('data-current'),
+    delivered: parseEl('data-delivered'),
+    rejected: parseEl('data-rejected'),
+    popups: []
+  };
+
+  function badgeClass(b) {
+    if (b === 'En cours' || b === 'In Delivery') return 'badge-c';
+    if (b === 'Livrée' || b === 'Completed') return 'badge-l';
+    if (b === 'Rejeté') return 'badge-r';
+    return 'badge-c';
+  }
+
+  function cardHtml(o, showDeliver) {
+    var t = o.time ? String(o.time).replace('T', ' ').slice(0, 19) : '';
+    return '<div class="card-o" data-oid="' + o.id + '">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">' +
+      '<div><strong>' + (o.client_nom || '') + '</strong><br><small>#' + o.numero + '</small></div>' +
+      '<span class="badge ' + badgeClass(o.statusBadge) + '">' + o.statusBadge + '</span></div>' +
+      '<div style="margin-top:8px;font-size:13px;color:#8a8a9e">' + (o.product || '') + '</div>' +
+      '<div style="margin-top:4px;font-size:13px;color:#8a8a9e">' + (o.address || '') + '</div>' +
+      '<div style="margin-top:6px;font-size:13px;color:#ffffff">' + (o.entreprise_nom || '') + ' · ' + (o.price || '') + '</div>' +
+      '<div style="margin-top:4px;font-size:12px;color:#8a8a9e">' + t + '</div>' +
+      (showDeliver ? '<button type="button" class="btn-done" data-livrer="' + o.id + '">Marquer comme livré</button>' : '') +
+      '</div>';
+  }
+
+  function syncCounters() {
+    var c = state.current.length, d = state.delivered.length, r = state.rejected.length;
+    document.getElementById('c-cur').textContent = c;
+    document.getElementById('c-liv').textContent = d;
+    document.getElementById('c-rej').textContent = r;
+    document.getElementById('s-cur').textContent = c;
+    document.getElementById('s-liv').textContent = d;
+    document.getElementById('s-rej').textContent = r;
+  }
+
+  function renderLists() {
+    document.getElementById('list-cur').innerHTML = state.current.length
+      ? state.current.map(function(o) { return cardHtml(o, true); }).join('')
+      : '<p style="color:#8a8a9e;font-size:13px;">Aucune commande en cours.</p>';
+    document.getElementById('list-liv').innerHTML = state.delivered.length
+      ? state.delivered.map(function(o) { return cardHtml(o, false); }).join('')
+      : '<p style="color:#8a8a9e;font-size:13px;">Aucune.</p>';
+    document.getElementById('list-rej').innerHTML = state.rejected.length
+      ? state.rejected.map(function(o) { return cardHtml(o, false); }).join('')
+      : '<p style="color:#8a8a9e;font-size:13px;">Aucune.</p>';
+    syncCounters();
+  }
+
+  function merge(list, o) {
+    return [o].concat(list.filter(function(x) { return x.id !== o.id; }));
+  }
+
+  document.querySelectorAll('.tabs-dash button').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var sec = btn.getAttribute('data-sec');
+      document.querySelectorAll('.tabs-dash button').forEach(function(b) { b.classList.toggle('active', b === btn); });
+      document.getElementById('sec-cur').classList.toggle('active', sec === 'cur');
+      document.getElementById('sec-liv').classList.toggle('active', sec === 'liv');
+      document.getElementById('sec-rej').classList.toggle('active', sec === 'rej');
+    });
+  });
+
+  var wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  var ws = new WebSocket(wsProto + '//' + location.host + '/ws/driver/');
+
+  function sendWs(obj) {
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+  }
+
+  function removePopup(oid) {
+    state.popups = state.popups.filter(function(p) { return p.order_id !== oid; });
+    redrawPopups();
+  }
+
+  function redrawPopups() {
+    var el = document.getElementById('notifs');
+    el.innerHTML = state.popups.map(function(n) {
+      return '<div class="notif" data-nid="' + n.order_id + '"><strong>Nouvelle commande</strong>' +
+        '<div style="margin-top:8px;font-size:13px;line-height:1.5;color:#8a8a9e">' +
+        '<div><b>Client :</b> ' + (n.client_name || '') + '</div>' +
+        '<div><b>Produit :</b> ' + (n.product || '') + '</div>' +
+        '<div><b>Adresse :</b> ' + (n.address || '') + '</div>' +
+        '<div><b>Prix :</b> ' + (n.price || '') + '</div>' +
+        '<div><b>Heure :</b> ' + (n.time || '') + '</div></div>' +
+        '<div style="display:flex;gap:8px;margin-top:10px">' +
+        '<button type="button" class="btn-no" data-ref="' + n.order_id + '">Rejeter</button>' +
+        '<button type="button" class="btn-go" data-acc="' + n.order_id + '">Accepter</button></div></div>';
+    }).join('');
+    el.querySelectorAll('[data-acc]').forEach(function(btn) {
+      btn.onclick = function() {
+        var id = parseInt(btn.getAttribute('data-acc'), 10);
+        removePopup(id);
+        sendWs({ type: 'order_accepted', order_id: id });
+      };
+    });
+    el.querySelectorAll('[data-ref]').forEach(function(btn) {
+      btn.onclick = function() {
+        var id = parseInt(btn.getAttribute('data-ref'), 10);
+        removePopup(id);
+        sendWs({ type: 'order_rejected', order_id: id });
+      };
+    });
+  }
+
+  ws.onmessage = function(ev) {
+    var data = {};
+    try { data = JSON.parse(ev.data); } catch (e) { return; }
+    if (data.type === 'new_order') {
+      var oid = data.order_id;
+      if (state.current.some(function(x) { return x.id === oid; })) return;
+      if (state.delivered.some(function(x) { return x.id === oid; })) return;
+      if (state.rejected.some(function(x) { return x.id === oid; })) return;
+      if (state.popups.some(function(p) { return p.order_id === oid; })) return;
+      state.popups = [data].concat(state.popups);
+      redrawPopups();
+      return;
+    }
+    if (data.type === 'order_cancelled') {
+      removePopup(data.order_id);
+      return;
+    }
+    if (data.type === 'order_accepted_ok' && data.order) {
+      removePopup(data.order.id);
+      state.current = merge(state.current, data.order);
+      renderLists();
+      return;
+    }
+    if (data.type === 'add_to_rejected' && data.order) {
+      state.rejected = merge(state.rejected, data.order);
+      renderLists();
+      return;
+    }
+    if (data.type === 'move_to_delivered' && data.order) {
+      var id = data.order.id;
+      state.current = state.current.filter(function(x) { return x.id !== id; });
+      state.delivered = merge(state.delivered, data.order);
+      renderLists();
+      return;
+    }
+    if (data.type === 'error') {
+      window.alert('Action impossible : ' + (data.code || data.action || ''));
+    }
+  };
+
+  ws.onclose = function() { setTimeout(function() { location.reload(); }, 4000); };
+
+  document.getElementById('list-cur').addEventListener('click', function(e) {
+    var b = e.target.closest('[data-livrer]');
+    if (!b) return;
+    sendWs({ type: 'mark_delivered', order_id: parseInt(b.getAttribute('data-livrer'), 10) });
+  });
+
+  renderLists();
+})();
+</script>
+{% endblock %}

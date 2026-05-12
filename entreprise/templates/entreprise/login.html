@@ -1,0 +1,42 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connexion — Espace Entreprise Swift</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="login-page-body">
+  <div class="login-shell">
+    <div class="login-card">
+      <h1 class="login-title">🏢 Espace Entreprise</h1>
+      <p class="login-sub">Swift — Connexion partenaire</p>
+      {% if messages %}
+      <ul class="messages-list">
+        {% for message in messages %}
+        <li class="msg msg-{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <form method="post" class="login-form">
+        {% csrf_token %}
+        <label class="lbl">{{ form.email.label }}</label>
+        {{ form.email }}
+        {% if form.email.errors %}<p class="field-error">{{ form.email.errors.0 }}</p>{% endif %}
+        <label class="lbl">{{ form.mot_de_passe.label }}</label>
+        {{ form.mot_de_passe }}
+        {% if form.mot_de_passe.errors %}<p class="field-error">{{ form.mot_de_passe.errors.0 }}</p>{% endif %}
+        {% if form.non_field_errors %}
+          <p class="field-error">{{ form.non_field_errors.0 }}</p>
+        {% endif %}
+        <button type="submit" class="btn-orange btn-login">Se connecter</button>
+      </form>
+      <p class="login-footer"><a href="{% url 'frontend-home' %}">← Retour à l'accueil</a></p>
+    </div>
+  </div>
+</body>
+</html>

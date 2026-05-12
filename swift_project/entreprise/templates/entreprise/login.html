@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Espace Entreprise</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    body {
+      min-height: 100vh;
+      background: #f5f4f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 480px;
+      background: #fff;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      border: 1px solid #e8e8e8;
+    }
+    .title {
+      text-align: center;
+      color: #000;
+      font-size: 26px;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #999;
+      font-size: 14px;
+      margin-bottom: 34px;
+    }
+    .field {
+      margin-bottom: 18px;
+    }
+    label {
+      display: block;
+      color: #000;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    input {
+      width: 100%;
+      border: 1.5px solid #ddd;
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+    input:focus {
+      border-color: #FF6B00;
+    }
+    .erreur {
+      margin-bottom: 16px;
+      color: #d93025;
+      font-size: 14px;
+    }
+    .submit {
+      width: 100%;
+      border: none;
+      border-radius: 50px;
+      padding: 15px;
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      background: #FF6B00;
+      cursor: pointer;
+      margin-top: 18px;
+    }
+    .back {
+      display: block;
+      text-align: center;
+      margin-top: 28px;
+      color: #FF6B00;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1 class="title">🏢 Espace Entreprise</h1>
+    <p class="subtitle">Swift — Connexion partenaire</p>
+
+    {% if erreur %}
+      <div class="erreur">{{ erreur }}</div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label>Email</label>
+        <input type="text" name="email" value="{{ request.POST.email|default:'' }}" required>
+      </div>
+
+      <div class="field">
+        <label>Mot de passe</label>
+        <input type="password" name="mot_de_passe" required>
+      </div>
+
+      <button type="submit" class="submit">Se connecter</button>
+    </form>
+
+    <a href="/" class="back">← Retour à l'accueil</a>
+  </div>
+</body>
+</html>

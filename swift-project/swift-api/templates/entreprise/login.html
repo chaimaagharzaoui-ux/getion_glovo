@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container" style="min-height:100vh;display:grid;place-items:center;">
+  <div style="width:100%;max-width:440px;">
+    <div style="text-align:center;color:#FF6B00;font-size:24px;font-weight:900;margin-bottom:14px;">⚡ Swift</div>
+    <div style="background:#fff;border:1px solid #eee;border-radius:24px;padding:36px;">
+      <h1 style="margin:0;color:#1a1a1a;font-size:24px;font-weight:900;">Espace Entreprise 🏢</h1>
+      <p style="margin:8px 0 20px;color:#888;font-size:13px;">Connectez-vous pour gérer votre établissement</p>
+      {% if messages %}
+        {% for message in messages %}
+          <div style="background:#fce4ec;color:#880e4f;border-radius:10px;padding:8px 10px;margin-bottom:12px;font-size:13px;">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+      <form method="post">
+        {% csrf_token %}
+        <label style="display:block;color:#777;font-size:11px;font-weight:800;letter-spacing:.1em;">NOM DE L'ENTREPRISE</label>
+        <input name="nom" type="text" required style="width:100%;box-sizing:border-box;margin-top:8px;margin-bottom:14px;border-radius:12px;border:1.5px solid #ddd;padding:12px 16px;outline-color:#FF6B00;">
+        <label style="display:block;color:#777;font-size:11px;font-weight:800;letter-spacing:.1em;">EMAIL</label>
+        <input name="email" type="email" required style="width:100%;box-sizing:border-box;margin-top:8px;margin-bottom:14px;border-radius:12px;border:1.5px solid #ddd;padding:12px 16px;outline-color:#FF6B00;">
+        <label style="display:block;color:#777;font-size:11px;font-weight:800;letter-spacing:.1em;">MOT DE PASSE</label>
+        <input name="mot_de_passe" type="password" required style="width:100%;box-sizing:border-box;margin-top:8px;border-radius:12px;border:1.5px solid #ddd;padding:12px 16px;outline-color:#FF6B00;">
+        <button type="submit" style="width:100%;margin-top:16px;border:none;border-radius:50px;background:#FF6B00;color:#fff;padding:14px;font-size:15px;font-weight:800;">Se connecter</button>
+      </form>
+      <div style="text-align:center;margin-top:14px;">
+        <a href="/" style="text-decoration:none;color:#FF6B00;font-size:14px;font-weight:700;">Pas encore inscrit ? Rejoindre Swift →</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

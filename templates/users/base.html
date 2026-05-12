@@ -113,8 +113,12 @@
             <strong>Smart Delivery Platform</strong>
         </div>
         <div>
+            {% if request.user.is_authenticated %}
             Utilisateur: <strong>{{ request.user.username }}</strong>
             (<span class="badge">{{ user_role }}</span>)
+            {% else %}
+            <span class="badge">{{ user_role|default:"Invité" }}</span>
+            {% endif %}
         </div>
     </div>
     <div class="container">

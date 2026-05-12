@@ -1,0 +1,102 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Espace Entreprise — Swift{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="entreprise-body">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="sidebar-brand-emoji" aria-hidden="true">🏢</span>
+      <span class="sidebar-brand-text">Espace Entreprise</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{% url 'dashboard' %}" class="nav-item {% if page_id == 'dashboard' %}active{% endif %}">
+        <span>📊</span> Tableau de bord
+      </a>
+      <a href="{% url 'commandes' %}" class="nav-item {% if page_id == 'commandes' %}active{% endif %}">
+        <span>📋</span> Commandes
+      </a>
+      <a href="{% url 'catalogue' %}" class="nav-item {% if page_id == 'catalogue' %}active{% endif %}">
+        <span>🛒</span> Catalogue
+      </a>
+      <a href="{% url 'statistiques' %}" class="nav-item {% if page_id == 'statistiques' %}active{% endif %}">
+        <span>📈</span> Statistiques
+      </a>
+      <a href="{% url 'finances' %}" class="nav-item {% if page_id == 'finances' %}active{% endif %}">
+        <span>💰</span> Finances
+      </a>
+      <a href="{% url 'parametres' %}" class="nav-item {% if page_id == 'parametres' %}active{% endif %}">
+        <span>⚙️</span> Paramètres
+      </a>
+      <a href="{% url 'support' %}" class="nav-item {% if page_id == 'support' %}active{% endif %}">
+        <span>🆘</span> Support
+      </a>
+    </nav>
+    <div class="sidebar-spacer"></div>
+    {% if entreprise_ctx %}
+    <div class="sidebar-profile">
+      <div class="sidebar-avatar-wrap">
+        {% if entreprise_ctx.logo %}
+          <img src="{{ entreprise_ctx.logo.url }}" alt="" class="sidebar-avatar">
+        {% else %}
+          <div class="sidebar-avatar sidebar-avatar-placeholder">{{ entreprise_ctx.nom.0|upper }}</div>
+        {% endif %}
+      </div>
+      <div class="sidebar-profile-text">
+        <div class="sidebar-profile-name">{{ entreprise_ctx.nom }}</div>
+        {% if entreprise_ctx.est_ouvert %}
+          <span class="badge badge-green sidebar-badge">En ligne</span>
+        {% else %}
+          <span class="badge badge-gray sidebar-badge">Fermé</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+    <div class="sidebar-footer">
+      <a href="{% url 'frontend-home' %}" class="sidebar-home-link">← Retour à l'accueil</a>
+    </div>
+  </aside>
+
+  <div class="main-wrap">
+    <header class="top-header">
+      <div class="top-header-left">
+        <p class="greeting-muted">Bonjour</p>
+        {% if entreprise_ctx %}
+        <h1 class="greeting-name">{{ entreprise_ctx.nom }}</h1>
+        {% endif %}
+      </div>
+      <div class="top-header-right">
+        <a href="{% url 'swift-demo' %}" class="link-orange">Voir ma page publique →</a>
+        <a href="{% url 'frontend-home' %}" class="btn-orange btn-header">Accueil</a>
+        <form action="{% url 'logout_entreprise' %}" method="post" class="inline-form">
+          {% csrf_token %}
+          <button type="submit" class="btn-logout">Déconnexion</button>
+        </form>
+      </div>
+    </header>
+
+    {% if messages %}
+    <ul class="messages-list">
+      {% for message in messages %}
+      <li class="msg msg-{{ message.tags }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <main class="main-content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script src="{% static 'js/main.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

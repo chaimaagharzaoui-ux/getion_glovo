@@ -1,0 +1,83 @@
+{% extends "users/base.html" %}
+{% block title %}Livreur — Connexion{% endblock %}
+{% block page_title %}Espace livreur Swift{% endblock %}
+{% block page_subtitle %}Connexion ou inscription pour recevoir les commandes en temps réel.{% endblock %}
+{% block content %}
+<style>
+  .auth-wrap { max-width: 480px; margin: 0 auto; }
+  .auth-card {
+    background: #fff; border-radius: 20px; padding: 28px 24px 32px;
+    border: 1px solid #e2e8f0; box-shadow: 0 12px 28px rgba(15,23,42,0.08);
+  }
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .tabs a {
+    flex: 1; text-align: center; padding: 10px; border-radius: 10px; font-weight: 800;
+    text-decoration: none; color: #64748b; background: #f1f5f9;
+  }
+  .tabs a.active { background: #FF6B00; color: #fff; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  label { display: block; font-size: 11px; font-weight: 800; color: #64748b; margin: 14px 0 6px; letter-spacing: 0.08em; }
+  input, select {
+    width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 12px;
+    border: 1px solid #e2e8f0; font-size: 14px; font-family: inherit;
+  }
+  .err { color: #EF4444; font-size: 13px; font-weight: 600; margin-top: 12px; }
+  .submit {
+    width: 100%; margin-top: 22px; padding: 14px; border: none; border-radius: 999px;
+    background: #FF6B00; color: #fff; font-weight: 800; font-size: 15px; cursor: pointer;
+  }
+</style>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div style="text-align:center;font-weight:900;color:#FF6B00;margin-bottom:8px;">⚡ Swift</div>
+    <div class="tabs">
+      <a href="{% url 'driver:driver_login' %}" class="{% if tab == 'login' %}active{% endif %}">Connexion</a>
+      <a href="{% url 'driver:driver_register' %}" class="{% if tab == 'register' %}active{% endif %}">Inscription</a>
+    </div>
+    {% if error %}<div class="err">{{ error }}</div>{% endif %}
+
+    <div class="panel {% if tab == 'login' %}active{% endif %}" id="panel-login">
+      <form method="post" action="{% url 'driver:driver_login' %}">
+        {% csrf_token %}
+        <label>EMAIL</label>
+        <input type="email" name="email" required autocomplete="email">
+        <label>MOT DE PASSE</label>
+        <input type="password" name="password" required autocomplete="current-password">
+        <button type="submit" class="submit">Se connecter</button>
+      </form>
+    </div>
+
+    <div class="panel {% if tab == 'register' %}active{% endif %}" id="panel-register">
+      <form method="post" action="{% url 'driver:driver_register' %}">
+        {% csrf_token %}
+        <label>PRÉNOM</label>
+        <input type="text" name="first_name" required>
+        <label>NOM</label>
+        <input type="text" name="last_name" required>
+        <label>EMAIL</label>
+        <input type="email" name="email" required autocomplete="email">
+        <label>VÉHICULE</label>
+        <select name="vehicle">
+          <option value="moto">🛵 Moto</option>
+          <option value="voiture">🚗 Voiture</option>
+        </select>
+        <label style="margin-top:16px;">MOT DE PASSE</label>
+        <input type="password" name="password" required minlength="6" autocomplete="new-password">
+        <button type="submit" class="submit">Créer mon compte</button>
+      </form>
+    </div>
+
+    <p style="text-align:center;margin-top:20px;">
+      <a href="{% url 'frontend-home' %}" style="color:#FF6B00;font-weight:700;text-decoration:none;">← Retour à l’accueil</a>
+    </p>
+  </div>
+</div>
+<script>
+(function(){
+  var tab = "{{ tab|default:'login' }}";
+  document.getElementById("panel-login").classList.toggle("active", tab === "login");
+  document.getElementById("panel-register").classList.toggle("active", tab === "register");
+})();
+</script>
+{% endblock %}

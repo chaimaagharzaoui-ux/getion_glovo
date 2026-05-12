@@ -60,6 +60,10 @@ class OrderCreateSerializer(serializers.Serializer):
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     delivery_driver = serializers.SerializerMethodField()
+    branch_name = serializers.CharField(source='branch.name', read_only=True)
+    company_name = serializers.CharField(source='branch.company.name', read_only=True)
+    client_username = serializers.CharField(source='client.username', read_only=True)
+    client_email = serializers.CharField(source='client.email', read_only=True)
 
     class Meta:
         model = Order
@@ -67,6 +71,10 @@ class OrderSerializer(serializers.ModelSerializer):
             'id',
             'client',
             'branch',
+            'branch_name',
+            'company_name',
+            'client_username',
+            'client_email',
             'status',
             'total_price',
             'client_lat',

@@ -1,0 +1,43 @@
+{% extends "entreprise/base_entreprise.html" %}
+{% block title %}Finances — Swift{% endblock %}
+{% block content %}
+<div class="page-finances">
+  <div class="finances-header">
+    <div class="stat-card finances-total-card">
+      <div class="stat-label">Total encaissé ce mois (commandes livrées)</div>
+      <div class="stat-value">{{ total_mois }} MAD</div>
+    </div>
+    <a href="{% url 'finances_export_csv' %}" class="btn-orange">Exporter CSV</a>
+  </div>
+
+  <section class="panel panel-table">
+    <h2 class="panel-title">Historique des paiements</h2>
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>N° commande</th>
+            <th>Client</th>
+            <th>Montant</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in livrees_mois %}
+          <tr>
+            <td>{{ c.created_at|date:"d/m/Y H:i" }}</td>
+            <td>{{ c.numero }}</td>
+            <td>{{ c.client_nom }}</td>
+            <td>{{ c.montant }} MAD</td>
+            <td><span class="badge badge-green">Encaissé</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="cell-empty">Aucun encaissement ce mois-ci.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

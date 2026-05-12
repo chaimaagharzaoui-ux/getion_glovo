@@ -1,0 +1,45 @@
+{% extends "entreprise/base_entreprise.html" %}
+{% block title %}Support — Swift{% endblock %}
+{% block content %}
+<div class="page-support">
+  <h2 class="page-heading">Support</h2>
+
+  <section class="panel">
+    <h3 class="panel-title">Nouveau message</h3>
+    <form method="post" class="stack-form">
+      {% csrf_token %}
+      <label class="lbl">{{ form.sujet.label }}</label>
+      {{ form.sujet }}
+      {% if form.sujet.errors %}<p class="field-error">{{ form.sujet.errors.0 }}</p>{% endif %}
+
+      <label class="lbl">{{ form.message.label }}</label>
+      {{ form.message }}
+      {% if form.message.errors %}<p class="field-error">{{ form.message.errors.0 }}</p>{% endif %}
+
+      <button type="submit" class="btn-orange">Envoyer</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h3 class="panel-title">Historique des tickets</h3>
+    <ul class="ticket-list">
+      {% for t in tickets %}
+      <li class="ticket-item">
+        <div class="ticket-head">
+          <strong>{{ t.sujet }}</strong>
+          {% if t.statut == 'resolu' %}
+          <span class="badge badge-gray">Résolu</span>
+          {% else %}
+          <span class="badge badge-orange">Ouvert</span>
+          {% endif %}
+        </div>
+        <p class="ticket-msg">{{ t.message|linebreaksbr }}</p>
+        <p class="ticket-date">{{ t.created_at|date:"d/m/Y H:i" }}</p>
+      </li>
+      {% empty %}
+      <li class="cell-empty">Aucun ticket pour l'instant.</li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

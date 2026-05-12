@@ -12,6 +12,7 @@ class Company(models.Model):
     name = models.CharField(max_length=255)
     type = models.CharField(max_length=100, choices=COMPANY_TYPE_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True, db_index=True)
 
     def __str__(self):
         return self.name
